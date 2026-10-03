@@ -1,0 +1,13 @@
+overlay: 1.1.0
+info:
+  title: Ticker.app price snapshots with every field optional
+  version: 1.0.0
+actions:
+  - target: "$.components.schemas.PriceSnapshot..required"
+    remove: true
+  - target: "$.components.schemas.CursorPaging.properties"
+    update:
+      latestCursor:
+        type: string
+        nullable: true
+        description: Additional opaque cursor observed in live disclosure pagination on 2026-10-03.

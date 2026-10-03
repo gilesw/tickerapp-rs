@@ -1,0 +1,1974 @@
+openapi: 3.0.1
+info:
+  title: Ticker Data API
+  description: Ticker Data API for programmatic access to market data
+  version: 2.2.1
+servers:
+  - url: https://api.tickerapp.net/v2
+tags:
+  - name: Disclosures
+    description: |-
+      Regulatory disclosure announcements from UK markets
+
+      > Latency varies by plan:
+      > Free, Lite: 15-minute delay · Advanced, Ultimate: Realtime
+
+      > Historical access varies by plan:
+      > Free: 7 days · Lite: 30 days · Advanced: 1 year · Ultimate: 3 years
+  - name: Prices
+    description: |-
+      Share price and market data
+
+      > Latency varies by plan:
+      > Free: EOD · Lite, Advanced: 15-minute delay · Ultimate: Realtime
+
+      > Historical access varies by plan:
+      > Free: 30 days · Lite: 1 year · Advanced: 3 years · Ultimate: 10 years
+  - name: Market Statistics (Beta)
+    description: |-
+      Market-wide rankings and statistics
+
+      `🔒 Advanced` `🔒 Ultimate`
+  - name: References
+    description: Reference data for exchanges
+x-tagGroups:
+  - name: Endpoints
+    tags:
+      - Disclosures
+      - Prices
+      - Market Statistics (Beta)
+      - References
+paths:
+  /health:
+    get:
+      x-internal: true
+      summary: Health check
+      description: Returns the health status of the API and database connectivity
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: 2024-01-01T00:00:00.000Z
+        "500":
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /disclosures/sources/rns/items:
+    get:
+      tags:
+        - Disclosures
+      summary: List RNS disclosure items
+      description: >
+        Returns a paginated list of disclosure items from the RNS source,
+        filtered by time range, instruments, categories and/or full-text query.
+      operationId: listRnsDisclosureItems
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: dateFrom
+          in: query
+          description: >
+            Filter items released on or after this date/time. **Default:** If
+            not provided, defaults to 30 days before `dateTo` (or 30 days ago if
+            `dateTo` is also omitted). This default does not apply when
+            filtering by `symbols` or `isins`. Accepts partial ISO8601 dates
+            that expand to the start of the period: `2025` → Jan 1st 00:00,
+            `2025-11` → Nov 1st 00:00, `2025-12-31` → Dec 31st 00:00,
+            `2025-12-31T14:30` → 14:30:00.
+          required: false
+          schema:
+            type: string
+          examples:
+            year:
+              value: "2025"
+              summary: Full year
+            month:
+              value: 2025-11
+              summary: Full month
+            day:
+              value: 2025-12-31
+              summary: Full day
+            datetime:
+              value: 2025-12-31T14:30:00Z
+              summary: Specific time
+        - name: dateTo
+          in: query
+          description: >
+            Filter items released on or before this date/time. Accepts partial
+            ISO8601 dates that expand to the end of the period: `2025` → Dec
+            31st 23:59:59, `2025-11` → Nov 30th 23:59:59, `2025-12-31` → Dec
+            31st 23:59:59, `2025-12-31T14:30` → 14:30:59.
+          required: false
+          schema:
+            type: string
+          examples:
+            year:
+              value: "2025"
+              summary: Full year
+            month:
+              value: 2025-11
+              summary: Full month
+            day:
+              value: 2025-12-31
+              summary: Full day
+            datetime:
+              value: 2025-12-31T14:30:00Z
+              summary: Specific time
+        - name: isins
+          in: query
+          description: >-
+            Filter by one or more ISINs (comma-separated). Example:
+            `isins=GB00AAA1111,GB00BBB2222`. Use either `isins`
+            (comma-separated) or `isin` (repeated), not both.
+
+
+
+            `🔒 Lite` `🔒 Advanced` `🔒 Ultimate`
+          required: false
+          schema:
+            type: string
+        - name: isin
+          in: query
+          description: >
+            Filter by one or more ISINs (repeated parameter). Example:
+            `isin=GB00AAA1111&isin=GB00BBB2222`. If both `isins` and `isin` are
+            provided, `isin` is ignored and a warning is returned.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: symbols
+          in: query
+          description: >-
+            Filter by ticker symbols (comma-separated). Example:
+            `symbols=VOD,LLOY`. Use either `symbols` (comma-separated) or
+            `symbol` (repeated), not both.
+
+
+
+            `🔒 Lite` `🔒 Advanced` `🔒 Ultimate`
+          required: false
+          schema:
+            type: string
+        - name: symbol
+          in: query
+          description: >
+            Filter by ticker symbols (repeated parameter). Example:
+            `symbol=VOD&symbol=LLOY`. If both `symbols` and `symbol` are
+            provided, `symbol` is ignored and a warning is returned.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: fcaCategories
+          in: query
+          description: >-
+            Filter by FCA category codes (comma-separated). Example:
+            `fcaCategories=FR,HOL,BOA`. Use either `fcaCategories`
+            (comma-separated) or `fcaCategory` (repeated), not both.
+
+
+
+            `🔒 Advanced` `🔒 Ultimate`
+          required: false
+          schema:
+            type: string
+        - name: fcaCategory
+          in: query
+          description: >
+            Filter by FCA category codes (repeated parameter). Example:
+            `fcaCategory=FR&fcaCategory=HOL`. If both `fcaCategories` and
+            `fcaCategory` are provided, `fcaCategory` is ignored and a warning
+            is returned.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: tickerCategories
+          in: query
+          description: >-
+            Filter by Ticker category codes (comma-separated). Example:
+            `tickerCategories=RE,HO,BC`. Use either `tickerCategories`
+            (comma-separated) or `tickerCategory` (repeated), not both.
+
+
+
+            `🔒 Advanced` `🔒 Ultimate`
+          required: false
+          schema:
+            type: string
+        - name: tickerCategory
+          in: query
+          description: >
+            Filter by Ticker category codes (repeated parameter). Example:
+            `tickerCategory=RE&tickerCategory=HO`. If both `tickerCategories`
+            and `tickerCategory` are provided, `tickerCategory` is ignored and a
+            warning is returned.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: q
+          in: query
+          description: |-
+            Full-text search over headline
+
+            `🔒 Advanced` `🔒 Ultimate`
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          description: Number of items per page (default 50, max 200)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: pageCursor
+          in: query
+          description: >
+            Opaque cursor for cursor-based pagination. Mutually exclusive with
+            `pageNumber` - use one or the other, not both.
+          required: false
+          schema:
+            type: string
+        - name: pageNumber
+          in: query
+          description: >
+            Page number for classic pagination (1-indexed). Mutually exclusive
+            with `pageCursor` - use one or the other, not both.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: hasSymbol
+          in: query
+          description: >
+            Filter to items where the issuer has a ticker symbol. Use
+            `hasSymbol=true` to only return items with a symbol.
+          required: false
+          schema:
+            type: boolean
+        - name: channel
+          in: query
+          description: >
+            Filter by distribution channel. Each channel corresponds to items
+            categorized for specific distribution targets. Enterprise-only
+            feature.
+          required: false
+          schema:
+            type: string
+            enum:
+              - app
+              - bot
+              - internal
+              - social
+              - widget
+      responses:
+        "200":
+          description: A page of RNS disclosure items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DisclosureItem"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Optional warnings about the request. For example, if a
+                      filter parameter was ignored because it is not available
+                      on the current plan, or if both singular and plural array
+                      parameter formats were provided.
+                required:
+                  - data
+                  - meta
+        "400":
+          description: Invalid filter or pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /disclosures/sources/rns/items/{identifier}:
+    get:
+      tags:
+        - Disclosures
+      summary: Get a single RNS disclosure item
+      description: >
+        Returns a single disclosure item by its identifier. Accepts either a
+        GUID or rnsDateId format (auto-detected by length).
+      operationId: getRnsDisclosureItem
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          description: >
+            The disclosure item identifier. Accepts two formats: - **GUID**: The
+            globally unique identifier (e.g.,
+            `urn:newsml:londonstockexchange.com:20251231:1234A:1`) -
+            **rnsDateId**: A 16-character composite key in format
+            `yyyy-mm-dd.rnsId` (e.g., `2025-12-31.1234A`)
+
+            The format is auto-detected by length: exactly 16 characters =
+            rnsDateId, otherwise GUID.
+          required: true
+          schema:
+            type: string
+          examples:
+            guid:
+              value: urn:newsml:londonstockexchange.com:20251231:1234A:1
+              summary: GUID format
+            rnsDateId:
+              value: 2025-12-31.1234A
+              summary: rnsDateId format (16 chars)
+      responses:
+        "200":
+          description: The requested disclosure item
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/DisclosureItem"
+                required:
+                  - data
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Disclosure item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /prices/{identifier}:
+    get:
+      tags:
+        - Prices
+      summary: Get current price snapshot
+      description: >
+        Returns the current price snapshot for an instrument including quote
+        prices, session data, 52-week statistics, and fundamentals.
+      operationId: getCurrentPrice
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          description: >
+            The instrument identifier. Accepts two formats: - **ISIN**: 12
+            alphanumeric characters (e.g., `GB00B0SWJX34`) - **MIC:Symbol**:
+            Exchange code and symbol separated by colon (e.g., `XLON:MCB`)
+          required: true
+          schema:
+            type: string
+          examples:
+            isin:
+              value: GB00B0SWJX34
+              summary: ISIN format
+            micSymbol:
+              value: XLON:MCB
+              summary: MIC:Symbol format
+        - name: changeBasis
+          in: query
+          description: >
+            Which price to use for calculating price change from previous close.
+            Default: `bid`
+          required: false
+          schema:
+            type: string
+            enum:
+              - bid
+              - ask
+              - mid
+              - trade
+            default: bid
+      responses:
+        "200":
+          description: Current price snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/PriceSnapshot"
+                required:
+                  - data
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /prices/{identifier}/timeseries:
+    get:
+      tags:
+        - Prices
+      summary: Get historical OHLCV timeseries
+      description: >
+        Returns historical open, high, low, close, volume (OHLCV) data for an
+        instrument. Optionally includes NAV data for funds.
+      operationId: getTimeseries
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          description: >
+            The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol
+            format.
+          required: true
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          description: Filter data from this date (partial ISO8601)
+          required: false
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          description: Filter data to this date (partial ISO8601)
+          required: false
+          schema:
+            type: string
+        - name: includeNav
+          in: query
+          description: Include NAV data when available (for funds)
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: _key
+          in: query
+          description: >
+            Response data format: - `array`: Zero-indexed array (default) -
+            `iso`: Keyed by ISO date - `unix`: Keyed by unix timestamp
+          required: false
+          schema:
+            type: string
+            enum:
+              - array
+              - iso
+              - unix
+            default: array
+        - name: pageSize
+          in: query
+          description: Number of items per page (default 250, max 1000)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 250
+        - name: pageCursor
+          in: query
+          description: Opaque cursor for cursor-based pagination
+          required: false
+          schema:
+            type: string
+        - name: pageNumber
+          in: query
+          description: Page number for classic pagination (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Historical timeseries data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                      - type: array
+                        items:
+                          $ref: "#/components/schemas/TimeseriesItem"
+                      - type: object
+                        additionalProperties:
+                          $ref: "#/components/schemas/TimeseriesItemKeyed"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+                required:
+                  - data
+                  - meta
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /prices/{identifier}/nav:
+    get:
+      tags:
+        - Prices
+      summary: Get discrete NAV values
+      description: >
+        Returns discrete Net Asset Value (NAV) data for funds. Unlike the
+        timeseries endpoint which forward-fills NAV values, this returns actual
+        NAV publication dates.
+      operationId: getNav
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          description: >
+            The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol
+            format.
+          required: true
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          description: Filter data from this date (partial ISO8601)
+          required: false
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          description: Filter data to this date (partial ISO8601)
+          required: false
+          schema:
+            type: string
+        - name: currency
+          in: query
+          description: Filter by currency code (e.g., GBX, USD)
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          description: Number of items per page (default 50, max 200)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: pageCursor
+          in: query
+          description: Opaque cursor for cursor-based pagination
+          required: false
+          schema:
+            type: string
+        - name: pageNumber
+          in: query
+          description: Page number for classic pagination (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Discrete NAV values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NavItem"
+                  meta:
+                    type: object
+                    properties:
+                      paging:
+                        $ref: "#/components/schemas/Paging"
+                    required:
+                      - paging
+                required:
+                  - data
+                  - meta
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /prices/{identifier}/trades:
+    get:
+      tags:
+        - Prices
+      summary: Get recent trades
+      description: >
+        Returns recent trades for an instrument. By default, returns trades from
+        the most recent 24-hour period. Use dateFrom/dateTo to filter by
+        specific date ranges. Data is delayed by 15 minutes for compliance
+        purposes. Supports both cursor-based and classic page-based pagination.
+      operationId: getTrades
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: identifier
+          in: path
+          description: >
+            The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol
+            format.
+          required: true
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          description: >
+            Start of date range filter. Accepts partial ISO8601 formats: YYYY,
+            YYYY-MM, YYYY-MM-DD, or full timestamp. If omitted, defaults to 24
+            hours before the latest available trade.
+          required: false
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          description: >
+            End of date range filter. Accepts partial ISO8601 formats: YYYY,
+            YYYY-MM, YYYY-MM-DD, or full timestamp. If omitted, defaults to the
+            latest available trade timestamp.
+          required: false
+          schema:
+            type: string
+        - name: pageSize
+          in: query
+          description: Number of items per page (default 50, max 200)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: pageCursor
+          in: query
+          description: >
+            Cursor for fetching the next page of results. Mutually exclusive
+            with `pageNumber`.
+          required: false
+          schema:
+            type: string
+        - name: pageNumber
+          in: query
+          description: >
+            Page number for classic pagination (1-indexed). Mutually exclusive
+            with `pageCursor`.
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Recent trades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TradeItem"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+                required:
+                  - data
+                  - meta
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-stats/risers:
+    get:
+      tags:
+        - Market Statistics (Beta)
+      summary: Get top price risers
+      description: >
+        Returns instruments with the highest percentage price increase for the
+        current trading day. If out of trading hours, returns data for the most
+        recent trading day with available data. Requires the `market-stats`
+        entitlement.
+      operationId: getMarketStatsRisers
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeMic"
+        - $ref: "#/components/parameters/SegmentMic"
+        - $ref: "#/components/parameters/Sector"
+      responses:
+        "200":
+          description: Top price risers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Plan does not include market-stats entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-stats/fallers:
+    get:
+      tags:
+        - Market Statistics (Beta)
+      summary: Get top price fallers
+      description: >
+        Returns instruments with the highest percentage price decrease for the
+        current trading day. If out of trading hours, returns data for the most
+        recent trading day with available data. Requires the `market-stats`
+        entitlement.
+      operationId: getMarketStatsFallers
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeMic"
+        - $ref: "#/components/parameters/SegmentMic"
+        - $ref: "#/components/parameters/Sector"
+      responses:
+        "200":
+          description: Top price fallers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Plan does not include market-stats entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-stats/highest-volume:
+    get:
+      tags:
+        - Market Statistics (Beta)
+      summary: Get highest volume by share count
+      description: >
+        Returns instruments with the highest share volume for the current
+        trading day. This measures the number of shares traded, not monetary
+        value. If out of trading hours, returns data for the most recent trading
+        day with available data. Requires the `market-stats` entitlement.
+      operationId: getMarketStatsHighestVolume
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeMic"
+        - $ref: "#/components/parameters/SegmentMic"
+        - $ref: "#/components/parameters/Sector"
+      responses:
+        "200":
+          description: Highest volume by share count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Plan does not include market-stats entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-stats/highest-turnover:
+    get:
+      tags:
+        - Market Statistics (Beta)
+      summary: Get highest turnover by value
+      description: >
+        Returns instruments with the highest traded value (price × volume) for
+        the current trading day. This measures monetary value traded, which
+        prevents penny stocks from dominating the rankings. If out of trading
+        hours, returns data for the most recent trading day with available data.
+        Requires the `market-stats` entitlement.
+      operationId: getMarketStatsHighestTurnover
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeMic"
+        - $ref: "#/components/parameters/SegmentMic"
+        - $ref: "#/components/parameters/Sector"
+      responses:
+        "200":
+          description: Highest turnover by value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Plan does not include market-stats entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /market-stats/most-traded:
+    get:
+      tags:
+        - Market Statistics (Beta)
+      summary: Get most traded by trade count
+      description: >
+        Returns instruments with the highest number of trades for the current
+        trading day. This measures trading activity by the number of individual
+        trades executed, not volume or value. If out of trading hours, returns
+        data for the most recent trading day with available data. Requires the
+        `market-stats` entitlement.
+      operationId: getMarketStatsMostTraded
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeMic"
+        - $ref: "#/components/parameters/SegmentMic"
+        - $ref: "#/components/parameters/Sector"
+      responses:
+        "200":
+          description: Most traded by trade count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketStatsResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Plan does not include market-stats entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /references/exchanges:
+    get:
+      tags:
+        - References
+      summary: List exchanges
+      description: Returns a list of supported exchanges.
+      operationId: listExchanges
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/PageCursor"
+        - $ref: "#/components/parameters/PageNumber"
+      responses:
+        "200":
+          description: List of exchanges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ExchangeListItem"
+                  meta:
+                    $ref: "#/components/schemas/Meta"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /references/exchanges/{mic}:
+    get:
+      tags:
+        - References
+      summary: Get exchange details
+      description: Returns detailed information for a single exchange by MIC.
+      operationId: getExchange
+      security: []
+      parameters:
+        - name: mic
+          in: path
+          description: Exchange MIC (e.g., XLON)
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exchange details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ExchangeDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      description: Error response wrapper
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+      required:
+        - error
+    ErrorDetail:
+      type: object
+      description: Error details
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: Pagination conflict
+        hint:
+          type: string
+          description: Suggestion for resolving the error
+          example: Use either pageCursor or pageNumber, not both.
+      required:
+        - message
+    Meta:
+      type: object
+      description: Response metadata (information about the data, such as pagination)
+      properties:
+        paging:
+          $ref: "#/components/schemas/Paging"
+      required:
+        - paging
+    Paging:
+      oneOf:
+        - $ref: "#/components/schemas/CursorPaging"
+        - $ref: "#/components/schemas/ClassicPaging"
+      description: Pagination response (format depends on whether pageCursor or
+        pageNumber was used)
+    CursorPaging:
+      type: object
+      description: Cursor-based pagination response
+      properties:
+        pageSize:
+          type: integer
+          description: Number of items per page
+        nextCursor:
+          type: string
+          nullable: true
+          description: Cursor to request the next page, or null if no more results
+      required:
+        - pageSize
+        - nextCursor
+    ClassicPaging:
+      type: object
+      description: Classic page-based pagination response
+      properties:
+        pageSize:
+          type: integer
+          description: Number of items per page
+        pageNumber:
+          type: integer
+          description: Current page number (1-indexed)
+        pageTotal:
+          type: integer
+          description: Total number of pages
+        itemTotal:
+          type: integer
+          description: Total number of items matching the query
+      required:
+        - pageSize
+        - pageNumber
+        - pageTotal
+        - itemTotal
+    DisclosureItem:
+      type: object
+      properties:
+        rnsId:
+          type: string
+          description: Native RNS identifier
+          example: 1234W
+        timestamp:
+          type: string
+          format: date-time
+          description: Publication timestamp
+        source:
+          type: string
+          example: RNS
+          description: Source code
+        guid:
+          type: string
+          description: Globally unique identifier
+        version:
+          type: integer
+          description: Version number (extracted from guid)
+        issuer:
+          $ref: "#/components/schemas/Company"
+        related:
+          type: array
+          items:
+            $ref: "#/components/schemas/Company"
+          description: Related companies mentioned in the disclosure
+        headline:
+          type: string
+          description: Disclosure headline
+        category:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+          description: Categories (Ticker and FCA)
+        publication:
+          type: array
+          items:
+            $ref: "#/components/schemas/Publication"
+          description: Available document formats
+        replaces:
+          description: If this is a replacement, details of the replaced announcement
+          allOf:
+            - $ref: "#/components/schemas/Replaces"
+      required:
+        - rnsId
+        - timestamp
+        - source
+        - guid
+        - version
+        - issuer
+        - headline
+        - category
+        - publication
+    Company:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Company name
+        lei:
+          type: string
+          description: Legal Entity Identifier
+        instrument:
+          $ref: "#/components/schemas/Instrument"
+      required:
+        - name
+    Instrument:
+      type: object
+      properties:
+        isin:
+          type: string
+          description: ISIN code
+        symbol:
+          $ref: "#/components/schemas/Symbol"
+      required:
+        - isin
+    Symbol:
+      type: object
+      properties:
+        mnemonic:
+          type: string
+          description: Ticker symbol
+      required:
+        - mnemonic
+    Category:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - Ticker
+            - FCA
+          description: Category type
+        code:
+          type: string
+          description: Category code
+        name:
+          type: string
+          description: Category name
+        description:
+          type: string
+          description: Category description (FCA only)
+        importance:
+          type: string
+          enum:
+            - low
+            - medium
+            - high
+            - ultra
+          description: Importance level (FCA only)
+      required:
+        - kind
+        - code
+        - name
+    Publication:
+      type: object
+      properties:
+        mime:
+          type: string
+          description: MIME type
+          example: application/pdf
+        url:
+          type: string
+          description: URL to the document
+      required:
+        - mime
+        - url
+    Replaces:
+      type: object
+      properties:
+        guid:
+          type: string
+          description: GUID of the replaced announcement
+        version:
+          type: integer
+          description: Version of the replaced announcement
+      required:
+        - guid
+        - version
+    PriceSnapshot:
+      type: object
+      description: Current price snapshot for an instrument
+      properties:
+        identifier:
+          type: object
+          properties:
+            isin:
+              type: string
+              description: ISIN code
+              example: GB00B0SWJX34
+            symbol:
+              type: string
+              description: Ticker symbol
+              example: MCB
+            mic:
+              type: string
+              description: Market Identifier Code
+              example: XLON
+          required:
+            - isin
+            - symbol
+            - mic
+        quote:
+          type: object
+          properties:
+            bid:
+              type: number
+              description: Best bid price
+            ask:
+              type: number
+              description: Best ask price
+            mid:
+              type: number
+              description: Mid price (average of bid and ask)
+            trade:
+              type: number
+              description: Last trade price
+            spread:
+              type: number
+              description: Bid-ask spread
+            timestamp:
+              type: string
+              format: date-time
+              description: Price timestamp
+            change:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  description: Absolute change from previous close
+                percent:
+                  type: number
+                  description: Percentage change from previous close
+                direction:
+                  type: string
+                  enum:
+                    - up
+                    - down
+                  description: Direction of change
+                basis:
+                  type: string
+                  description: Price used for change calculation
+              required:
+                - amount
+                - percent
+                - direction
+                - basis
+          required:
+            - bid
+            - ask
+            - mid
+            - trade
+            - spread
+            - timestamp
+            - change
+        session:
+          type: object
+          description: Current trading session data
+          properties:
+            date:
+              type: string
+              format: date
+              description: Session date
+            open:
+              type: number
+              description: Opening price
+            high:
+              type: number
+              description: Session high
+            low:
+              type: number
+              description: Session low
+            close:
+              type: number
+              description: Current/closing price
+            volume:
+              type: integer
+              description: Volume traded
+            vwap:
+              type: number
+              description: Volume-weighted average price
+            trades:
+              type: integer
+              description: Number of trades
+            previous:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Previous session date
+                close:
+                  type: number
+                  description: Previous close price
+                volume:
+                  type: integer
+                  nullable: true
+                  description: Previous session volume
+              required:
+                - date
+                - close
+                - volume
+          required:
+            - date
+            - open
+            - high
+            - low
+            - close
+            - volume
+            - vwap
+            - trades
+            - previous
+        year:
+          type: object
+          description: 52-week statistics
+          properties:
+            high:
+              type: object
+              properties:
+                price:
+                  type: number
+                date:
+                  type: string
+                  format: date
+              required:
+                - price
+                - date
+            low:
+              type: object
+              properties:
+                price:
+                  type: number
+                date:
+                  type: string
+                  format: date
+              required:
+                - price
+                - date
+            volume:
+              type: object
+              properties:
+                total:
+                  type: integer
+                average:
+                  type: integer
+              required:
+                - total
+                - average
+            performance:
+              type: object
+              properties:
+                absolute:
+                  type: number
+                percent:
+                  type: number
+              required:
+                - absolute
+                - percent
+            volatility:
+              type: number
+            vwap:
+              type: number
+          required:
+            - high
+            - low
+            - volume
+            - performance
+            - volatility
+            - vwap
+        fundamentals:
+          type: object
+          properties:
+            marketCap:
+              type: number
+              nullable: true
+              description: Market capitalization
+            sharesInIssue:
+              type: number
+              nullable: true
+              description: Total shares in issue
+          required:
+            - marketCap
+            - sharesInIssue
+      required:
+        - identifier
+        - quote
+        - session
+        - year
+        - fundamentals
+    InstrumentIdentifier:
+      type: object
+      description: Instrument identifier details
+      properties:
+        isin:
+          type: string
+          description: ISIN code
+          example: GB00B0SWJX34
+        symbol:
+          type: string
+          description: Ticker symbol
+          example: MCB
+        mic:
+          type: string
+          description: Market Identifier Code
+          example: XLON
+      required:
+        - isin
+        - symbol
+        - mic
+    TimeseriesItem:
+      type: object
+      description: Single timeseries data point
+      properties:
+        date:
+          type: string
+          format: date
+          description: Date of the data point
+        open:
+          type: number
+          description: Opening price
+        high:
+          type: number
+          description: High price
+        low:
+          type: number
+          description: Low price
+        close:
+          type: number
+          description: Closing price
+        volume:
+          type: integer
+          description: Volume traded
+        nav:
+          type: number
+          nullable: true
+          description: NAV value (only when includeNav=true)
+      required:
+        - date
+        - open
+        - high
+        - low
+        - close
+        - volume
+    TimeseriesItemKeyed:
+      type: object
+      description: Single timeseries data point (keyed format, without date)
+      properties:
+        open:
+          type: number
+          description: Opening price
+        high:
+          type: number
+          description: High price
+        low:
+          type: number
+          description: Low price
+        close:
+          type: number
+          description: Closing price
+        volume:
+          type: integer
+          description: Volume traded
+        nav:
+          type: number
+          nullable: true
+          description: NAV value (only when includeNav=true)
+      required:
+        - open
+        - high
+        - low
+        - close
+        - volume
+    NavItem:
+      type: object
+      description: Single NAV data point
+      properties:
+        date:
+          type: string
+          format: date
+          description: NAV publication date
+        values:
+          type: array
+          items:
+            type: object
+            properties:
+              value:
+                type: number
+                description: NAV value
+              currency:
+                type: string
+                description: Currency code (e.g., GBX, USD)
+            required:
+              - value
+              - currency
+      required:
+        - date
+        - values
+    TradeItem:
+      type: object
+      description: Single trade record
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Trade timestamp
+        price:
+          type: number
+          description: Trade price
+        volume:
+          type: integer
+          description: Trade volume
+        quoteCondition:
+          type: string
+          nullable: true
+          description: Quote condition code from the exchange
+        venue:
+          type: string
+          nullable: true
+          description: Trade venue (Exchange or Off-book)
+          enum:
+            - Exchange
+            - Off-book
+        side:
+          type: string
+          description: Trade side
+      required:
+        - timestamp
+        - price
+        - volume
+        - quoteCondition
+        - venue
+        - side
+    MarketStatsResponse:
+      type: object
+      description: Market statistics response
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketStatsItem"
+        meta:
+          type: object
+          properties:
+            tradingDate:
+              type: string
+              format: date
+              description: The trading date for which data is returned
+            exchangeMic:
+              type: string
+              description: Exchange MIC code (included since XLON is the default if not
+                specified in request)
+            count:
+              type: integer
+              description: Number of items returned
+          required:
+            - tradingDate
+            - exchangeMic
+            - count
+      required:
+        - data
+        - meta
+    MarketStatsItem:
+      type: object
+      description: Single market statistics item
+      properties:
+        rank:
+          type: integer
+          description: Rank position (1 = top)
+        identifier:
+          $ref: "#/components/schemas/InstrumentIdentifier"
+        name:
+          type: string
+          nullable: true
+          description: Company name
+        price:
+          type: number
+          description: Current price
+        change:
+          type: object
+          properties:
+            amount:
+              type: number
+              description: Absolute price change from previous close
+            percent:
+              type: number
+              description: Percentage change from previous close
+            direction:
+              type: string
+              enum:
+                - up
+                - down
+              description: Direction of price change
+          required:
+            - amount
+            - percent
+            - direction
+        volume:
+          type: integer
+          description: Number of shares traded
+        value:
+          type: number
+          description: Total value traded (in GBP)
+        trades:
+          type: integer
+          description: Number of trades executed
+      required:
+        - rank
+        - identifier
+        - name
+        - price
+        - change
+        - volume
+        - value
+        - trades
+    ExchangeSegment:
+      type: object
+      description: A segment MIC within an exchange
+      properties:
+        mic:
+          type: string
+          description: Segment MIC code
+          example: XLOM
+        name:
+          type: string
+          nullable: true
+          description: Segment name
+        status:
+          type: string
+          nullable: true
+          description: Segment status (ACTIVE, UPDATED, EXPIRED)
+      required:
+        - mic
+    ExchangeListItem:
+      type: object
+      description: Exchange summary for list responses
+      properties:
+        mic:
+          type: string
+          description: Market Identifier Code (operating MIC)
+          example: XLON
+        name:
+          type: string
+          nullable: true
+          description: Exchange name
+        country:
+          type: string
+          nullable: true
+          description: ISO 3166 country code
+          example: GB
+        city:
+          type: string
+          nullable: true
+          description: City name
+          example: LONDON
+        status:
+          type: string
+          nullable: true
+          description: MIC status (ACTIVE, UPDATED, EXPIRED)
+          example: ACTIVE
+        comments:
+          type: string
+          nullable: true
+          description: Additional comments from ISO registry
+      required:
+        - mic
+    ExchangeDetail:
+      type: object
+      description: Full exchange details (ISO 10383 MIC data)
+      properties:
+        mic:
+          type: string
+          description: Market Identifier Code (operating MIC)
+          example: XLON
+        name:
+          type: string
+          nullable: true
+          description: Exchange name
+        abbreviation:
+          type: string
+          nullable: true
+          description: Exchange abbreviation
+        country:
+          type: string
+          nullable: true
+          description: ISO 3166 country code
+          example: GB
+        city:
+          type: string
+          nullable: true
+          description: City name
+          example: LONDON
+        status:
+          type: string
+          nullable: true
+          description: MIC status (ACTIVE, UPDATED, EXPIRED)
+          example: ACTIVE
+        website:
+          type: string
+          nullable: true
+          description: Exchange website URL
+        creationDate:
+          type: string
+          nullable: true
+          description: ISO date when MIC was created
+          example: 2005-06-27
+        lastUpdateDate:
+          type: string
+          nullable: true
+          description: ISO date when MIC was last updated
+          example: 2024-10-28
+        expiryDate:
+          type: string
+          nullable: true
+          description: ISO date when MIC expired (null if active)
+        comments:
+          type: string
+          nullable: true
+          description: Additional comments from ISO registry
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExchangeSegment"
+          description: Segment MICs operating under this exchange
+        _links:
+          type: object
+          properties:
+            self:
+              type: string
+              description: Link to this resource
+      required:
+        - mic
+        - segments
+        - _links
+  parameters:
+    ExchangeMic:
+      name: exchangeMic
+      in: query
+      description: |
+        Exchange MIC code. Default: `XLON` (London Stock Exchange).
+      required: false
+      schema:
+        type: string
+        default: XLON
+      example: XLON
+    SegmentMic:
+      name: segmentMic
+      in: query
+      description: >
+        Market segment MIC code to filter results. Common values: - `XLON`: Main
+        Market - `AIMX`: AIM (Alternative Investment Market) - `XLOM`:
+        Professional Securities Market
+
+        If omitted, returns results from all segments on the exchange.
+      required: false
+      schema:
+        type: string
+      examples:
+        mainMarket:
+          value: XLON
+          summary: Main Market only
+        aim:
+          value: AIMX
+          summary: AIM only
+    Sector:
+      name: sector
+      in: query
+      description: >
+        ICB industry sector to filter results. Example: `Finance`, `Technology`,
+        `Healthcare`.
+      required: false
+      schema:
+        type: string
+    PageSize:
+      name: pageSize
+      in: query
+      description: Number of items per page (default 50, max 200)
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    PageCursor:
+      name: pageCursor
+      in: query
+      description: Cursor for pagination. Mutually exclusive with pageNumber.
+      required: false
+      schema:
+        type: string
+    PageNumber:
+      name: pageNumber
+      in: query
+      description: Page number (1-indexed). Mutually exclusive with pageCursor.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key

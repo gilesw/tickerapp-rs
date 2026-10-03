@@ -1,0 +1,2627 @@
+{
+  "components": {
+    "parameters": {
+      "ExchangeMic": {
+        "description": "Exchange MIC code. Default: `XLON` (London Stock Exchange).\n",
+        "example": "XLON",
+        "in": "query",
+        "name": "exchangeMic",
+        "required": false,
+        "schema": {
+          "default": "XLON",
+          "type": "string"
+        }
+      },
+      "PageCursor": {
+        "description": "Cursor for pagination. Mutually exclusive with pageNumber.",
+        "in": "query",
+        "name": "pageCursor",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PageNumber": {
+        "description": "Page number (1-indexed). Mutually exclusive with pageCursor.",
+        "in": "query",
+        "name": "pageNumber",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "PageSize": {
+        "description": "Number of items per page (default 50, max 200)",
+        "in": "query",
+        "name": "pageSize",
+        "required": false,
+        "schema": {
+          "default": 50,
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "Sector": {
+        "description": "ICB industry sector to filter results. Example: `Finance`, `Technology`, `Healthcare`.\n",
+        "in": "query",
+        "name": "sector",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "SegmentMic": {
+        "description": "Market segment MIC code to filter results. Common values: - `XLON`: Main Market - `AIMX`: AIM (Alternative Investment Market) - `XLOM`: Professional Securities Market\nIf omitted, returns results from all segments on the exchange.\n",
+        "examples": {
+          "aim": {
+            "summary": "AIM only",
+            "value": "AIMX"
+          },
+          "mainMarket": {
+            "summary": "Main Market only",
+            "value": "XLON"
+          }
+        },
+        "in": "query",
+        "name": "segmentMic",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Invalid parameters"
+      },
+      "NotFound": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Resource not found"
+      },
+      "ServerError": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Server error"
+      },
+      "Unauthorized": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "description": "Invalid or missing API key"
+      }
+    },
+    "schemas": {
+      "Category": {
+        "properties": {
+          "code": {
+            "description": "Category code",
+            "type": "string"
+          },
+          "description": {
+            "description": "Category description (FCA only)",
+            "type": "string"
+          },
+          "importance": {
+            "description": "Importance level (FCA only)",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "ultra"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "description": "Category type",
+            "enum": [
+              "Ticker",
+              "FCA"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "description": "Category name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "code",
+          "name"
+        ],
+        "type": "object"
+      },
+      "ClassicPaging": {
+        "description": "Classic page-based pagination response",
+        "properties": {
+          "itemTotal": {
+            "description": "Total number of items matching the query",
+            "type": "integer"
+          },
+          "pageNumber": {
+            "description": "Current page number (1-indexed)",
+            "type": "integer"
+          },
+          "pageSize": {
+            "description": "Number of items per page",
+            "type": "integer"
+          },
+          "pageTotal": {
+            "description": "Total number of pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageSize",
+          "pageNumber",
+          "pageTotal",
+          "itemTotal"
+        ],
+        "type": "object"
+      },
+      "Company": {
+        "properties": {
+          "instrument": {
+            "$ref": "#/components/schemas/Instrument"
+          },
+          "lei": {
+            "description": "Legal Entity Identifier",
+            "type": "string"
+          },
+          "name": {
+            "description": "Company name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CursorPaging": {
+        "description": "Cursor-based pagination response",
+        "properties": {
+          "latestCursor": {
+            "description": "Additional opaque cursor observed in live disclosure pagination on 2026-10-03.",
+            "nullable": true,
+            "type": "string"
+          },
+          "nextCursor": {
+            "description": "Cursor to request the next page, or null if no more results",
+            "nullable": true,
+            "type": "string"
+          },
+          "pageSize": {
+            "description": "Number of items per page",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageSize",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "DisclosureItem": {
+        "properties": {
+          "category": {
+            "description": "Categories (Ticker and FCA)",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array"
+          },
+          "guid": {
+            "description": "Globally unique identifier",
+            "type": "string"
+          },
+          "headline": {
+            "description": "Disclosure headline",
+            "type": "string"
+          },
+          "issuer": {
+            "$ref": "#/components/schemas/Company"
+          },
+          "publication": {
+            "description": "Available document formats",
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "type": "array"
+          },
+          "related": {
+            "description": "Related companies mentioned in the disclosure",
+            "items": {
+              "$ref": "#/components/schemas/Company"
+            },
+            "type": "array"
+          },
+          "replaces": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Replaces"
+              }
+            ],
+            "description": "If this is a replacement, details of the replaced announcement"
+          },
+          "rnsId": {
+            "description": "Native RNS identifier",
+            "example": "1234W",
+            "type": "string"
+          },
+          "source": {
+            "description": "Source code",
+            "example": "RNS",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Publication timestamp",
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "description": "Version number (extracted from guid)",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rnsId",
+          "timestamp",
+          "source",
+          "guid",
+          "version",
+          "issuer",
+          "headline",
+          "category",
+          "publication"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "description": "Error details",
+        "properties": {
+          "hint": {
+            "description": "Suggestion for resolving the error",
+            "example": "Use either pageCursor or pageNumber, not both.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable error message",
+            "example": "Pagination conflict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Error response wrapper",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ExchangeDetail": {
+        "description": "Full exchange details (ISO 10383 MIC data)",
+        "properties": {
+          "_links": {
+            "properties": {
+              "self": {
+                "description": "Link to this resource",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "abbreviation": {
+            "description": "Exchange abbreviation",
+            "nullable": true,
+            "type": "string"
+          },
+          "city": {
+            "description": "City name",
+            "example": "LONDON",
+            "nullable": true,
+            "type": "string"
+          },
+          "comments": {
+            "description": "Additional comments from ISO registry",
+            "nullable": true,
+            "type": "string"
+          },
+          "country": {
+            "description": "ISO 3166 country code",
+            "example": "GB",
+            "nullable": true,
+            "type": "string"
+          },
+          "creationDate": {
+            "description": "ISO date when MIC was created",
+            "example": "2005-06-27",
+            "nullable": true,
+            "type": "string"
+          },
+          "expiryDate": {
+            "description": "ISO date when MIC expired (null if active)",
+            "nullable": true,
+            "type": "string"
+          },
+          "lastUpdateDate": {
+            "description": "ISO date when MIC was last updated",
+            "example": "2024-10-28",
+            "nullable": true,
+            "type": "string"
+          },
+          "mic": {
+            "description": "Market Identifier Code (operating MIC)",
+            "example": "XLON",
+            "type": "string"
+          },
+          "name": {
+            "description": "Exchange name",
+            "nullable": true,
+            "type": "string"
+          },
+          "segments": {
+            "description": "Segment MICs operating under this exchange",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeSegment"
+            },
+            "type": "array"
+          },
+          "status": {
+            "description": "MIC status (ACTIVE, UPDATED, EXPIRED)",
+            "example": "ACTIVE",
+            "nullable": true,
+            "type": "string"
+          },
+          "website": {
+            "description": "Exchange website URL",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "mic",
+          "segments",
+          "_links"
+        ],
+        "type": "object"
+      },
+      "ExchangeListItem": {
+        "description": "Exchange summary for list responses",
+        "properties": {
+          "city": {
+            "description": "City name",
+            "example": "LONDON",
+            "nullable": true,
+            "type": "string"
+          },
+          "comments": {
+            "description": "Additional comments from ISO registry",
+            "nullable": true,
+            "type": "string"
+          },
+          "country": {
+            "description": "ISO 3166 country code",
+            "example": "GB",
+            "nullable": true,
+            "type": "string"
+          },
+          "mic": {
+            "description": "Market Identifier Code (operating MIC)",
+            "example": "XLON",
+            "type": "string"
+          },
+          "name": {
+            "description": "Exchange name",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "description": "MIC status (ACTIVE, UPDATED, EXPIRED)",
+            "example": "ACTIVE",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "mic"
+        ],
+        "type": "object"
+      },
+      "ExchangeSegment": {
+        "description": "A segment MIC within an exchange",
+        "properties": {
+          "mic": {
+            "description": "Segment MIC code",
+            "example": "XLOM",
+            "type": "string"
+          },
+          "name": {
+            "description": "Segment name",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "description": "Segment status (ACTIVE, UPDATED, EXPIRED)",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "mic"
+        ],
+        "type": "object"
+      },
+      "Instrument": {
+        "properties": {
+          "isin": {
+            "description": "ISIN code",
+            "type": "string"
+          },
+          "symbol": {
+            "$ref": "#/components/schemas/Symbol"
+          }
+        },
+        "required": [
+          "isin"
+        ],
+        "type": "object"
+      },
+      "InstrumentIdentifier": {
+        "description": "Instrument identifier details",
+        "properties": {
+          "isin": {
+            "description": "ISIN code",
+            "example": "GB00B0SWJX34",
+            "type": "string"
+          },
+          "mic": {
+            "description": "Market Identifier Code",
+            "example": "XLON",
+            "type": "string"
+          },
+          "symbol": {
+            "description": "Ticker symbol",
+            "example": "MCB",
+            "type": "string"
+          }
+        },
+        "required": [
+          "isin",
+          "symbol",
+          "mic"
+        ],
+        "type": "object"
+      },
+      "MarketStatsItem": {
+        "description": "Single market statistics item",
+        "properties": {
+          "change": {
+            "properties": {
+              "amount": {
+                "description": "Absolute price change from previous close",
+                "type": "number"
+              },
+              "direction": {
+                "description": "Direction of price change",
+                "enum": [
+                  "up",
+                  "down"
+                ],
+                "type": "string"
+              },
+              "percent": {
+                "description": "Percentage change from previous close",
+                "type": "number"
+              }
+            },
+            "required": [
+              "amount",
+              "percent",
+              "direction"
+            ],
+            "type": "object"
+          },
+          "identifier": {
+            "$ref": "#/components/schemas/InstrumentIdentifier"
+          },
+          "name": {
+            "description": "Company name",
+            "nullable": true,
+            "type": "string"
+          },
+          "price": {
+            "description": "Current price",
+            "type": "number"
+          },
+          "rank": {
+            "description": "Rank position (1 = top)",
+            "type": "integer"
+          },
+          "trades": {
+            "description": "Number of trades executed",
+            "type": "integer"
+          },
+          "value": {
+            "description": "Total value traded (in GBP)",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Number of shares traded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rank",
+          "identifier",
+          "name",
+          "price",
+          "change",
+          "volume",
+          "value",
+          "trades"
+        ],
+        "type": "object"
+      },
+      "MarketStatsResponse": {
+        "description": "Market statistics response",
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MarketStatsItem"
+            },
+            "type": "array"
+          },
+          "meta": {
+            "properties": {
+              "count": {
+                "description": "Number of items returned",
+                "type": "integer"
+              },
+              "exchangeMic": {
+                "description": "Exchange MIC code (included since XLON is the default if not specified in request)",
+                "type": "string"
+              },
+              "tradingDate": {
+                "description": "The trading date for which data is returned",
+                "format": "date",
+                "type": "string"
+              }
+            },
+            "required": [
+              "tradingDate",
+              "exchangeMic",
+              "count"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "Meta": {
+        "description": "Response metadata (information about the data, such as pagination)",
+        "properties": {
+          "paging": {
+            "$ref": "#/components/schemas/Paging"
+          }
+        },
+        "required": [
+          "paging"
+        ],
+        "type": "object"
+      },
+      "NavItem": {
+        "description": "Single NAV data point",
+        "properties": {
+          "date": {
+            "description": "NAV publication date",
+            "format": "date",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "properties": {
+                "currency": {
+                  "description": "Currency code (e.g., GBX, USD)",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "NAV value",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "value",
+                "currency"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "values"
+        ],
+        "type": "object"
+      },
+      "Paging": {
+        "description": "Pagination response (format depends on whether pageCursor or pageNumber was used)",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CursorPaging"
+          },
+          {
+            "$ref": "#/components/schemas/ClassicPaging"
+          }
+        ]
+      },
+      "PriceSnapshot": {
+        "description": "Current price snapshot for an instrument",
+        "properties": {
+          "fundamentals": {
+            "properties": {
+              "marketCap": {
+                "description": "Market capitalization",
+                "nullable": true,
+                "type": "number"
+              },
+              "sharesInIssue": {
+                "description": "Total shares in issue",
+                "nullable": true,
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "identifier": {
+            "properties": {
+              "isin": {
+                "description": "ISIN code",
+                "example": "GB00B0SWJX34",
+                "type": "string"
+              },
+              "mic": {
+                "description": "Market Identifier Code",
+                "example": "XLON",
+                "type": "string"
+              },
+              "symbol": {
+                "description": "Ticker symbol",
+                "example": "MCB",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "quote": {
+            "properties": {
+              "ask": {
+                "description": "Best ask price",
+                "type": "number"
+              },
+              "bid": {
+                "description": "Best bid price",
+                "type": "number"
+              },
+              "change": {
+                "properties": {
+                  "amount": {
+                    "description": "Absolute change from previous close",
+                    "type": "number"
+                  },
+                  "basis": {
+                    "description": "Price used for change calculation",
+                    "type": "string"
+                  },
+                  "direction": {
+                    "description": "Direction of change",
+                    "enum": [
+                      "up",
+                      "down"
+                    ],
+                    "type": "string"
+                  },
+                  "percent": {
+                    "description": "Percentage change from previous close",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "mid": {
+                "description": "Mid price (average of bid and ask)",
+                "type": "number"
+              },
+              "spread": {
+                "description": "Bid-ask spread",
+                "type": "number"
+              },
+              "timestamp": {
+                "description": "Price timestamp",
+                "format": "date-time",
+                "type": "string"
+              },
+              "trade": {
+                "description": "Last trade price",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "session": {
+            "description": "Current trading session data",
+            "properties": {
+              "close": {
+                "description": "Current/closing price",
+                "type": "number"
+              },
+              "date": {
+                "description": "Session date",
+                "format": "date",
+                "type": "string"
+              },
+              "high": {
+                "description": "Session high",
+                "type": "number"
+              },
+              "low": {
+                "description": "Session low",
+                "type": "number"
+              },
+              "open": {
+                "description": "Opening price",
+                "type": "number"
+              },
+              "previous": {
+                "properties": {
+                  "close": {
+                    "description": "Previous close price",
+                    "type": "number"
+                  },
+                  "date": {
+                    "description": "Previous session date",
+                    "format": "date",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "volume": {
+                    "description": "Previous session volume",
+                    "nullable": true,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "trades": {
+                "description": "Number of trades",
+                "type": "integer"
+              },
+              "volume": {
+                "description": "Volume traded",
+                "type": "integer"
+              },
+              "vwap": {
+                "description": "Volume-weighted average price",
+                "type": "number"
+              }
+            },
+            "type": "object"
+          },
+          "year": {
+            "description": "52-week statistics",
+            "properties": {
+              "high": {
+                "properties": {
+                  "date": {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "low": {
+                "properties": {
+                  "date": {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "performance": {
+                "properties": {
+                  "absolute": {
+                    "type": "number"
+                  },
+                  "percent": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "volatility": {
+                "type": "number"
+              },
+              "volume": {
+                "properties": {
+                  "average": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "vwap": {
+                "type": "number"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "Publication": {
+        "properties": {
+          "mime": {
+            "description": "MIME type",
+            "example": "application/pdf",
+            "type": "string"
+          },
+          "url": {
+            "description": "URL to the document",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mime",
+          "url"
+        ],
+        "type": "object"
+      },
+      "Replaces": {
+        "properties": {
+          "guid": {
+            "description": "GUID of the replaced announcement",
+            "type": "string"
+          },
+          "version": {
+            "description": "Version of the replaced announcement",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "guid",
+          "version"
+        ],
+        "type": "object"
+      },
+      "Symbol": {
+        "properties": {
+          "mnemonic": {
+            "description": "Ticker symbol",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mnemonic"
+        ],
+        "type": "object"
+      },
+      "TimeseriesItem": {
+        "description": "Single timeseries data point",
+        "properties": {
+          "close": {
+            "description": "Closing price",
+            "type": "number"
+          },
+          "date": {
+            "description": "Date of the data point",
+            "format": "date",
+            "type": "string"
+          },
+          "high": {
+            "description": "High price",
+            "type": "number"
+          },
+          "low": {
+            "description": "Low price",
+            "type": "number"
+          },
+          "nav": {
+            "description": "NAV value (only when includeNav=true)",
+            "nullable": true,
+            "type": "number"
+          },
+          "open": {
+            "description": "Opening price",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Volume traded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "type": "object"
+      },
+      "TimeseriesItemKeyed": {
+        "description": "Single timeseries data point (keyed format, without date)",
+        "properties": {
+          "close": {
+            "description": "Closing price",
+            "type": "number"
+          },
+          "high": {
+            "description": "High price",
+            "type": "number"
+          },
+          "low": {
+            "description": "Low price",
+            "type": "number"
+          },
+          "nav": {
+            "description": "NAV value (only when includeNav=true)",
+            "nullable": true,
+            "type": "number"
+          },
+          "open": {
+            "description": "Opening price",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Volume traded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "type": "object"
+      },
+      "TradeItem": {
+        "description": "Single trade record",
+        "properties": {
+          "price": {
+            "description": "Trade price",
+            "type": "number"
+          },
+          "quoteCondition": {
+            "description": "Quote condition code from the exchange",
+            "nullable": true,
+            "type": "string"
+          },
+          "side": {
+            "description": "Trade side",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Trade timestamp",
+            "format": "date-time",
+            "type": "string"
+          },
+          "venue": {
+            "description": "Trade venue (Exchange or Off-book)",
+            "enum": [
+              "Exchange",
+              "Off-book"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "volume": {
+            "description": "Trade volume",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "timestamp",
+          "price",
+          "volume",
+          "quoteCondition",
+          "venue",
+          "side"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "in": "header",
+        "name": "x-api-key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "Ticker Data API for programmatic access to market data",
+    "title": "Ticker Data API",
+    "version": "2.2.1"
+  },
+  "openapi": "3.0.1",
+  "paths": {
+    "/disclosures/sources/rns/items": {
+      "get": {
+        "description": "Returns a paginated list of disclosure items from the RNS source, filtered by time range, instruments, categories and/or full-text query.\n",
+        "operationId": "listRnsDisclosureItems",
+        "parameters": [
+          {
+            "description": "Filter items released on or after this date/time. **Default:** If not provided, defaults to 30 days before `dateTo` (or 30 days ago if `dateTo` is also omitted). This default does not apply when filtering by `symbols` or `isins`. Accepts partial ISO8601 dates that expand to the start of the period: `2025` → Jan 1st 00:00, `2025-11` → Nov 1st 00:00, `2025-12-31` → Dec 31st 00:00, `2025-12-31T14:30` → 14:30:00.\n",
+            "examples": {
+              "datetime": {
+                "summary": "Specific time",
+                "value": "2025-12-31T14:30:00Z"
+              },
+              "day": {
+                "summary": "Full day",
+                "value": "2025-12-31"
+              },
+              "month": {
+                "summary": "Full month",
+                "value": "2025-11"
+              },
+              "year": {
+                "summary": "Full year",
+                "value": "2025"
+              }
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter items released on or before this date/time. Accepts partial ISO8601 dates that expand to the end of the period: `2025` → Dec 31st 23:59:59, `2025-11` → Nov 30th 23:59:59, `2025-12-31` → Dec 31st 23:59:59, `2025-12-31T14:30` → 14:30:59.\n",
+            "examples": {
+              "datetime": {
+                "summary": "Specific time",
+                "value": "2025-12-31T14:30:00Z"
+              },
+              "day": {
+                "summary": "Full day",
+                "value": "2025-12-31"
+              },
+              "month": {
+                "summary": "Full month",
+                "value": "2025-11"
+              },
+              "year": {
+                "summary": "Full year",
+                "value": "2025"
+              }
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by one or more ISINs (comma-separated). Example: `isins=GB00AAA1111,GB00BBB2222`. Use either `isins` (comma-separated) or `isin` (repeated), not both.\n\n\n`🔒 Lite` `🔒 Advanced` `🔒 Ultimate`",
+            "in": "query",
+            "name": "isins",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by one or more ISINs (repeated parameter). Example: `isin=GB00AAA1111&isin=GB00BBB2222`. If both `isins` and `isin` are provided, `isin` is ignored and a warning is returned.\n",
+            "explode": true,
+            "in": "query",
+            "name": "isin",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Filter by ticker symbols (comma-separated). Example: `symbols=VOD,LLOY`. Use either `symbols` (comma-separated) or `symbol` (repeated), not both.\n\n\n`🔒 Lite` `🔒 Advanced` `🔒 Ultimate`",
+            "in": "query",
+            "name": "symbols",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by ticker symbols (repeated parameter). Example: `symbol=VOD&symbol=LLOY`. If both `symbols` and `symbol` are provided, `symbol` is ignored and a warning is returned.\n",
+            "explode": true,
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Filter by FCA category codes (comma-separated). Example: `fcaCategories=FR,HOL,BOA`. Use either `fcaCategories` (comma-separated) or `fcaCategory` (repeated), not both.\n\n\n`🔒 Advanced` `🔒 Ultimate`",
+            "in": "query",
+            "name": "fcaCategories",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by FCA category codes (repeated parameter). Example: `fcaCategory=FR&fcaCategory=HOL`. If both `fcaCategories` and `fcaCategory` are provided, `fcaCategory` is ignored and a warning is returned.\n",
+            "explode": true,
+            "in": "query",
+            "name": "fcaCategory",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Filter by Ticker category codes (comma-separated). Example: `tickerCategories=RE,HO,BC`. Use either `tickerCategories` (comma-separated) or `tickerCategory` (repeated), not both.\n\n\n`🔒 Advanced` `🔒 Ultimate`",
+            "in": "query",
+            "name": "tickerCategories",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by Ticker category codes (repeated parameter). Example: `tickerCategory=RE&tickerCategory=HO`. If both `tickerCategories` and `tickerCategory` are provided, `tickerCategory` is ignored and a warning is returned.\n",
+            "explode": true,
+            "in": "query",
+            "name": "tickerCategory",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Full-text search over headline\n\n`🔒 Advanced` `🔒 Ultimate`",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of items per page (default 50, max 200)",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor for cursor-based pagination. Mutually exclusive with `pageNumber` - use one or the other, not both.\n",
+            "in": "query",
+            "name": "pageCursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number for classic pagination (1-indexed). Mutually exclusive with `pageCursor` - use one or the other, not both.\n",
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter to items where the issuer has a ticker symbol. Use `hasSymbol=true` to only return items with a symbol.\n",
+            "in": "query",
+            "name": "hasSymbol",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Filter by distribution channel. Each channel corresponds to items categorized for specific distribution targets. Enterprise-only feature.\n",
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "enum": [
+                "app",
+                "bot",
+                "internal",
+                "social",
+                "widget"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/DisclosureItem"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    },
+                    "warnings": {
+                      "description": "Optional warnings about the request. For example, if a filter parameter was ignored because it is not available on the current plan, or if both singular and plural array parameter formats were provided.\n",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of RNS disclosure items"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid filter or pagination parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "List RNS disclosure items",
+        "tags": [
+          "Disclosures"
+        ]
+      }
+    },
+    "/disclosures/sources/rns/items/{identifier}": {
+      "get": {
+        "description": "Returns a single disclosure item by its identifier. Accepts either a GUID or rnsDateId format (auto-detected by length).\n",
+        "operationId": "getRnsDisclosureItem",
+        "parameters": [
+          {
+            "description": "The disclosure item identifier. Accepts two formats: - **GUID**: The globally unique identifier (e.g., `urn:newsml:londonstockexchange.com:20251231:1234A:1`) - **rnsDateId**: A 16-character composite key in format `yyyy-mm-dd.rnsId` (e.g., `2025-12-31.1234A`)\nThe format is auto-detected by length: exactly 16 characters = rnsDateId, otherwise GUID.\n",
+            "examples": {
+              "guid": {
+                "summary": "GUID format",
+                "value": "urn:newsml:londonstockexchange.com:20251231:1234A:1"
+              },
+              "rnsDateId": {
+                "summary": "rnsDateId format (16 chars)",
+                "value": "2025-12-31.1234A"
+              }
+            },
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DisclosureItem"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The requested disclosure item"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disclosure item not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get a single RNS disclosure item",
+        "tags": [
+          "Disclosures"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Returns the health status of the API and database connectivity",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "example": "ok",
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "example": "2024-01-01T00:00:00.000Z",
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Service is healthy"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service is unhealthy"
+          }
+        },
+        "security": [],
+        "summary": "Health check",
+        "x-internal": true
+      }
+    },
+    "/market-stats/fallers": {
+      "get": {
+        "description": "Returns instruments with the highest percentage price decrease for the current trading day. If out of trading hours, returns data for the most recent trading day with available data. Requires the `market-stats` entitlement.\n",
+        "operationId": "getMarketStatsFallers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExchangeMic"
+          },
+          {
+            "$ref": "#/components/parameters/SegmentMic"
+          },
+          {
+            "$ref": "#/components/parameters/Sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatsResponse"
+                }
+              }
+            },
+            "description": "Top price fallers"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Plan does not include market-stats entitlement"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get top price fallers",
+        "tags": [
+          "Market Statistics (Beta)"
+        ]
+      }
+    },
+    "/market-stats/highest-turnover": {
+      "get": {
+        "description": "Returns instruments with the highest traded value (price × volume) for the current trading day. This measures monetary value traded, which prevents penny stocks from dominating the rankings. If out of trading hours, returns data for the most recent trading day with available data. Requires the `market-stats` entitlement.\n",
+        "operationId": "getMarketStatsHighestTurnover",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExchangeMic"
+          },
+          {
+            "$ref": "#/components/parameters/SegmentMic"
+          },
+          {
+            "$ref": "#/components/parameters/Sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatsResponse"
+                }
+              }
+            },
+            "description": "Highest turnover by value"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Plan does not include market-stats entitlement"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get highest turnover by value",
+        "tags": [
+          "Market Statistics (Beta)"
+        ]
+      }
+    },
+    "/market-stats/highest-volume": {
+      "get": {
+        "description": "Returns instruments with the highest share volume for the current trading day. This measures the number of shares traded, not monetary value. If out of trading hours, returns data for the most recent trading day with available data. Requires the `market-stats` entitlement.\n",
+        "operationId": "getMarketStatsHighestVolume",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExchangeMic"
+          },
+          {
+            "$ref": "#/components/parameters/SegmentMic"
+          },
+          {
+            "$ref": "#/components/parameters/Sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatsResponse"
+                }
+              }
+            },
+            "description": "Highest volume by share count"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Plan does not include market-stats entitlement"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get highest volume by share count",
+        "tags": [
+          "Market Statistics (Beta)"
+        ]
+      }
+    },
+    "/market-stats/most-traded": {
+      "get": {
+        "description": "Returns instruments with the highest number of trades for the current trading day. This measures trading activity by the number of individual trades executed, not volume or value. If out of trading hours, returns data for the most recent trading day with available data. Requires the `market-stats` entitlement.\n",
+        "operationId": "getMarketStatsMostTraded",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExchangeMic"
+          },
+          {
+            "$ref": "#/components/parameters/SegmentMic"
+          },
+          {
+            "$ref": "#/components/parameters/Sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatsResponse"
+                }
+              }
+            },
+            "description": "Most traded by trade count"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Plan does not include market-stats entitlement"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get most traded by trade count",
+        "tags": [
+          "Market Statistics (Beta)"
+        ]
+      }
+    },
+    "/market-stats/risers": {
+      "get": {
+        "description": "Returns instruments with the highest percentage price increase for the current trading day. If out of trading hours, returns data for the most recent trading day with available data. Requires the `market-stats` entitlement.\n",
+        "operationId": "getMarketStatsRisers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExchangeMic"
+          },
+          {
+            "$ref": "#/components/parameters/SegmentMic"
+          },
+          {
+            "$ref": "#/components/parameters/Sector"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatsResponse"
+                }
+              }
+            },
+            "description": "Top price risers"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Plan does not include market-stats entitlement"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get top price risers",
+        "tags": [
+          "Market Statistics (Beta)"
+        ]
+      }
+    },
+    "/prices/{identifier}": {
+      "get": {
+        "description": "Returns the current price snapshot for an instrument including quote prices, session data, 52-week statistics, and fundamentals.\n",
+        "operationId": "getCurrentPrice",
+        "parameters": [
+          {
+            "description": "The instrument identifier. Accepts two formats: - **ISIN**: 12 alphanumeric characters (e.g., `GB00B0SWJX34`) - **MIC:Symbol**: Exchange code and symbol separated by colon (e.g., `XLON:MCB`)\n",
+            "examples": {
+              "isin": {
+                "summary": "ISIN format",
+                "value": "GB00B0SWJX34"
+              },
+              "micSymbol": {
+                "summary": "MIC:Symbol format",
+                "value": "XLON:MCB"
+              }
+            },
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which price to use for calculating price change from previous close. Default: `bid`\n",
+            "in": "query",
+            "name": "changeBasis",
+            "required": false,
+            "schema": {
+              "default": "bid",
+              "enum": [
+                "bid",
+                "ask",
+                "mid",
+                "trade"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PriceSnapshot"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Current price snapshot"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Instrument not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get current price snapshot",
+        "tags": [
+          "Prices"
+        ]
+      }
+    },
+    "/prices/{identifier}/nav": {
+      "get": {
+        "description": "Returns discrete Net Asset Value (NAV) data for funds. Unlike the timeseries endpoint which forward-fills NAV values, this returns actual NAV publication dates.\n",
+        "operationId": "getNav",
+        "parameters": [
+          {
+            "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter data from this date (partial ISO8601)",
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter data to this date (partial ISO8601)",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by currency code (e.g., GBX, USD)",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of items per page (default 50, max 200)",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor for cursor-based pagination",
+            "in": "query",
+            "name": "pageCursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number for classic pagination (1-indexed)",
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/NavItem"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "properties": {
+                        "paging": {
+                          "$ref": "#/components/schemas/Paging"
+                        }
+                      },
+                      "required": [
+                        "paging"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Discrete NAV values"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Instrument not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get discrete NAV values",
+        "tags": [
+          "Prices"
+        ]
+      }
+    },
+    "/prices/{identifier}/timeseries": {
+      "get": {
+        "description": "Returns historical open, high, low, close, volume (OHLCV) data for an instrument. Optionally includes NAV data for funds.\n",
+        "operationId": "getTimeseries",
+        "parameters": [
+          {
+            "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter data from this date (partial ISO8601)",
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter data to this date (partial ISO8601)",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Include NAV data when available (for funds)",
+            "in": "query",
+            "name": "includeNav",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Response data format: - `array`: Zero-indexed array (default) - `iso`: Keyed by ISO date - `unix`: Keyed by unix timestamp\n",
+            "in": "query",
+            "name": "_key",
+            "required": false,
+            "schema": {
+              "default": "array",
+              "enum": [
+                "array",
+                "iso",
+                "unix"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of items per page (default 250, max 1000)",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 250,
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor for cursor-based pagination",
+            "in": "query",
+            "name": "pageCursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number for classic pagination (1-indexed)",
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "items": {
+                            "$ref": "#/components/schemas/TimeseriesItem"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "additionalProperties": {
+                            "$ref": "#/components/schemas/TimeseriesItemKeyed"
+                          },
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Historical timeseries data"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Instrument not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get historical OHLCV timeseries",
+        "tags": [
+          "Prices"
+        ]
+      }
+    },
+    "/prices/{identifier}/trades": {
+      "get": {
+        "description": "Returns recent trades for an instrument. By default, returns trades from the most recent 24-hour period. Use dateFrom/dateTo to filter by specific date ranges. Data is delayed by 15 minutes for compliance purposes. Supports both cursor-based and classic page-based pagination.\n",
+        "operationId": "getTrades",
+        "parameters": [
+          {
+            "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
+            "in": "path",
+            "name": "identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Start of date range filter. Accepts partial ISO8601 formats: YYYY, YYYY-MM, YYYY-MM-DD, or full timestamp. If omitted, defaults to 24 hours before the latest available trade.\n",
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "End of date range filter. Accepts partial ISO8601 formats: YYYY, YYYY-MM, YYYY-MM-DD, or full timestamp. If omitted, defaults to the latest available trade timestamp.\n",
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of items per page (default 50, max 200)",
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Cursor for fetching the next page of results. Mutually exclusive with `pageNumber`.\n",
+            "in": "query",
+            "name": "pageCursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number for classic pagination (1-indexed). Mutually exclusive with `pageCursor`.\n",
+            "in": "query",
+            "name": "pageNumber",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/TradeItem"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Recent trades"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Instrument not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Server error"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Get recent trades",
+        "tags": [
+          "Prices"
+        ]
+      }
+    },
+    "/references/exchanges": {
+      "get": {
+        "description": "Returns a list of supported exchanges.",
+        "operationId": "listExchanges",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "$ref": "#/components/parameters/PageCursor"
+          },
+          {
+            "$ref": "#/components/parameters/PageNumber"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/ExchangeListItem"
+                      },
+                      "type": "array"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/Meta"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List of exchanges"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [],
+        "summary": "List exchanges",
+        "tags": [
+          "References"
+        ]
+      }
+    },
+    "/references/exchanges/{mic}": {
+      "get": {
+        "description": "Returns detailed information for a single exchange by MIC.",
+        "operationId": "getExchange",
+        "parameters": [
+          {
+            "description": "Exchange MIC (e.g., XLON)",
+            "in": "path",
+            "name": "mic",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ExchangeDetail"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Exchange details"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [],
+        "summary": "Get exchange details",
+        "tags": [
+          "References"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.tickerapp.net/v2"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Regulatory disclosure announcements from UK markets\n\n> Latency varies by plan:\n> Free, Lite: 15-minute delay · Advanced, Ultimate: Realtime\n\n> Historical access varies by plan:\n> Free: 7 days · Lite: 30 days · Advanced: 1 year · Ultimate: 3 years",
+      "name": "Disclosures"
+    },
+    {
+      "description": "Share price and market data\n\n> Latency varies by plan:\n> Free: EOD · Lite, Advanced: 15-minute delay · Ultimate: Realtime\n\n> Historical access varies by plan:\n> Free: 30 days · Lite: 1 year · Advanced: 3 years · Ultimate: 10 years",
+      "name": "Prices"
+    },
+    {
+      "description": "Market-wide rankings and statistics\n\n`🔒 Advanced` `🔒 Ultimate`",
+      "name": "Market Statistics (Beta)"
+    },
+    {
+      "description": "Reference data for exchanges",
+      "name": "References"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Endpoints",
+      "tags": [
+        "Disclosures",
+        "Prices",
+        "Market Statistics (Beta)",
+        "References"
+      ]
+    }
+  ]
+}
