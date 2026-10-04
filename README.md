@@ -2,7 +2,7 @@
 
 Unofficial async Rust client for the Ticker.app v2 market data API.
 Generated from the checked-in OpenAPI 3.0.1 specification, API version **2.2.1**,
-with a small convenience layer. Requires Rust 1.85 or newer.
+with a small convenience layer. Requires Rust 1.98.1 or newer.
 
 This crate is being prepared for publication. For now, use a local dependency:
 

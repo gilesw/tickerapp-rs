@@ -10,3 +10,4 @@
 - Add bounded history collection with explicit errors for incomplete pagination,
   repeated cursors and invalid keyed dates.
 - Add reproducible generation, tests and tag-based release tasks through mise.
+- Require Rust 1.98.1 and add GitHub Actions lint, test and release dry-run workflows.
