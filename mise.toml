@@ -1,5 +1,6 @@
 [tools]
 actionlint = "1.7.12"
+git-cliff = "2.14.2"
 rust = { version = "1.98.1", components = "clippy,rustfmt" }
 shellcheck = "0.10.0"
 "github:bnjbvr/cargo-machete" = "0.9.2"
@@ -35,8 +36,13 @@ description = "Unit and mock-server tests"
 run = "cargo test --locked"
 
 [tasks."lint:scripts"]
-description = "ShellCheck the release script and run its tests"
-run = ["shellcheck --shell=bash scripts/*.sh", "python3 scripts/test-publish.py"]
+description = "ShellCheck the release scripts and run their tests"
+run = [
+  "shellcheck --shell=bash scripts/*.sh",
+  "python3 scripts/test-bump.py",
+  "python3 scripts/test-tag.py",
+  "python3 scripts/test-publish.py",
+]
 
 [tasks."lint:actions"]
 description = "Lint the GitHub Actions workflows"
@@ -53,6 +59,16 @@ run = ["mise run fmt:check", "mise run lint:scripts", "mise run lint:actions", "
 [tasks.check]
 description = "The merge gate: fast checks, Clippy, tests and generated-output staleness"
 run = ["mise run check:fast", "mise run lint", "mise run test", "mise run generate:check"]
+
+[tasks.bump]
+description = "Raise the crate version and insert its changelog section: bump major|minor|patch"
+dir = "{{config_root}}"
+run = "bash scripts/bump.sh"
+
+[tasks.tag]
+description = "Create the annotated tag for the Cargo.toml version; --push also pushes it"
+dir = "{{config_root}}"
+run = "bash scripts/tag.sh"
 
 [tasks.release]
 description = "Dry-run the release, detecting the version tag at HEAD"

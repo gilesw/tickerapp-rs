@@ -150,14 +150,16 @@ Edit the specification/configuration/overlay, then regenerate; never hand-edit
 records exactly what is generated. Tests use synthetic responses and local mock
 servers; no credentials or account data are stored in fixtures.
 
-Verification on 2026-10-03: 16 client tests, one documentation example and
-12 release-script tests pass. A live Rust request fetched and decoded one RNS
-disclosure, including `latestCursor` metadata. Other endpoints have not been
-live-verified. Formatting, Clippy and generated-output checks also pass.
+Verification on 2026-10-05: 16 client tests, one documentation example and
+44 release-script tests pass. A live Rust request on 2026-10-03 fetched and
+decoded one RNS disclosure, including `latestCursor` metadata. Other endpoints
+have not been live-verified. Formatting, Clippy and generated-output checks also pass.
 
-The [release guide](RELEASING.md) covers a clean tagged commit, tag detection,
-`mise run release` for a dry run and `mise run release:publish` for upload.
-Cargo reads an inherited `CARGO_REGISTRY_TOKEN` directly.
+The [release guide](RELEASING.md) covers `mise run bump` for the version and
+changelog, `mise run tag` for the annotated tag and push, `mise run release` for
+a dry run and `mise run release:publish` for upload. Pushing the tag publishes
+through crates.io trusted publishing; local uploads read an inherited
+`CARGO_REGISTRY_TOKEN`.
 
 ## License and provenance
 

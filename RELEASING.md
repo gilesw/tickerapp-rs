@@ -3,8 +3,10 @@
 ## Release contract
 
 Use `Cargo.toml` as the version source. Tag the corresponding commit `vVERSION`,
-for example `v0.1.0`. The publishing script reads the tag and requires it to
-match the manifest; it never rewrites a version or makes a commit.
+for example `v0.1.0`. `mise run bump` is the only task that edits the manifest
+and changelog, `mise run tag` the only one that creates or pushes refs, and
+neither publishes. The publishing script reads the tag and requires it to match
+the manifest; it never rewrites a version or makes a commit.
 
 The same commit must be tested, pushed to the public repository and published
 to crates.io. Pushing a `v*` tag runs `.github/workflows/release.yml`, which
@@ -30,31 +32,40 @@ and tag the published commit. [Cargo publishing guide](https://doc.rust-lang.org
 - The manifest permits crates.io using `publish = ["crates-io"]`. An error
   saying the manifest does not permit publication is a manifest configuration
   problem, not a login failure. The script respects this restriction in dry runs too.
-- Install the toolchains and tools declared in `mise.toml`, plus Python 3 for
-  parsing Cargo's JSON metadata in the Bash script.
+- Install the toolchains and tools declared in `mise.toml`, including git-cliff,
+  plus Python 3 for parsing Cargo's JSON metadata in the Bash scripts.
+- Prepare the first release by hand: `mise run bump` requires a tag for the
+  current version, so it serves every release after the first.
 
 The public remote and repository metadata must be configured before the first
 release. Preparing the workflow does not publish a crate.
 
 ## Prepare a version
 
-1. Update `package.version` in `Cargo.toml` using SemVer. Update `Cargo.lock`
-   by running Cargo after the change, and describe the changes in `CHANGELOG.md`.
-2. Review generated-code changes and run `mise run check`.
-3. Inspect `cargo package --list`. The crate should contain its generated Rust
+1. From a clean checkout, run `mise run bump major|minor|patch`. It raises
+   `package.version`, refreshes the `Cargo.lock` root entry with
+   `cargo update --workspace`, and inserts `## X.Y.Z — YYYY-MM-DD` at the top of
+   `CHANGELOG.md`, rendered by git-cliff (`cliff.toml`) from the subject line of
+   every commit since the previous tag. It refuses to run when the current
+   version has no tag, that tag is not the newest one reachable from HEAD, there
+   are no new commits, or the changelog is not topped by the dated current
+   section. Nothing is committed; a failure restores the three files.
+2. Edit the generated bullets into release notes and review `git diff`.
+3. Review generated-code changes and run `mise run check`.
+4. Inspect `cargo package --list`. The crate should contain its generated Rust
    code and build without downloading the specification or running the generator.
-4. Commit the complete release, including the lockfile and generated output.
-5. Create an annotated tag matching the manifest, then push the commit and tag.
-
-For example, after preparing version 0.1.0:
+5. Commit the complete release, including the lockfile and generated output,
+   for example `git commit -am "Release 0.2.0"`.
+6. Run `mise run tag`. It confirms the tag exists neither locally nor on origin
+   and that the first changelog section is `## X.Y.Z — YYYY-MM-DD`, then creates
+   the annotated tag `vX.Y.Z` at HEAD and prints the push command.
+   `mise run tag --push` also runs that command, pushing the branch and the tag
+   atomically, which starts the release workflow. It refuses `--push` from a
+   detached checkout; tag without it and push with an explicit branch:
 
 ```sh
-git tag -a v0.1.0 -m "Release 0.1.0"
-git push origin HEAD
-git push origin v0.1.0
+git push --atomic origin HEAD:refs/heads/main refs/tags/v0.2.0
 ```
-
-Use an explicit branch destination if publishing from a detached checkout.
 
 ## Verify and publish
 
@@ -124,14 +135,15 @@ If code must change after the tag was pushed, prepare a new version/tag.
 Use yanking for an unsuitable published version when appropriate; it is not
 a replacement for publishing a corrected version.
 
-For this single crate, a short script is sufficient. If releases later need
-automated version bumps, coordinated workspace releases or release PRs, evaluate
-the tools linked by Cargo, such as `cargo-release` or `release-plz`, before
-expanding the script into a release framework.
+For this single crate, short scripts are sufficient. If releases later need
+coordinated workspace releases or release PRs, evaluate the tools linked by
+Cargo, such as `cargo-release` or `release-plz`, before expanding the scripts
+into a release framework.
 
-## Maintaining the script
+## Maintaining the scripts
 
-Run `bash -n scripts/publish.sh` and `python3 scripts/test-publish.py` after
-changes. The tests use disposable local Git repositories and replace Cargo and
-mise with stubs, so they verify release gates without making registry requests
-or uploading anything.
+Run `mise run lint:scripts` after changes. It runs ShellCheck on `scripts/*.sh`
+and the tests in `scripts/test-bump.py`, `scripts/test-tag.py` and
+`scripts/test-publish.py`. The tests use disposable local Git repositories and
+replace Cargo, mise and git-cliff with stubs, so they verify the release gates
+without making registry requests or uploading anything.

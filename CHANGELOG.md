@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Unreleased
+## 0.1.0 — 2026-10-03
 
 - Generate all 14 operations from the pinned Ticker Data API 2.2.1 specification.
 - Preserve the additional `latestCursor` field observed in live disclosure pagination
