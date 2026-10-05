@@ -50,21 +50,22 @@ release. Preparing the workflow does not publish a crate.
    version has no tag, that tag is not the newest one reachable from HEAD, there
    are no new commits, or the changelog is not topped by the dated current
    section. Nothing is committed; a failure restores the three files.
-2. Edit the generated bullets into release notes and review `git diff`.
-3. Review generated-code changes and run `mise run check`.
-4. Inspect `cargo package --list`. The crate should contain its generated Rust
+2. Review `git diff` and generated-code changes, then run `mise run check`.
+3. Inspect `cargo package --list`. The crate should contain its generated Rust
    code and build without downloading the specification or running the generator.
-5. Commit the complete release, including the lockfile and generated output,
+4. Commit the complete release, including the lockfile and generated output,
    for example `git commit -am "Release 0.2.0"`.
-6. Run `mise run tag`. It confirms the tag exists neither locally nor on origin
-   and that the first changelog section is `## X.Y.Z — YYYY-MM-DD`, then creates
-   the annotated tag `vX.Y.Z` at HEAD and prints the push command.
-   `mise run tag --push` also runs that command, pushing the branch and the tag
-   atomically, which starts the release workflow. It refuses `--push` from a
-   detached checkout; tag without it and push with an explicit branch:
+5. Merge the release commit to `main`, through a pull request or a direct push,
+   then check out `main` and pull so HEAD is the merged commit.
+6. Run `mise run tag`. It refuses to run anywhere but `main` with HEAD at the tip
+   of `origin/main`, so a pull-request branch can never be tagged. It confirms the
+   tag exists neither locally nor on origin and that the first changelog section is
+   `## X.Y.Z — YYYY-MM-DD`, then creates the annotated tag `vX.Y.Z` at HEAD and
+   pushes it, which starts the release workflow and publishes the crate.
+   `mise run tag --no-push` only creates the tag and prints the push command:
 
 ```sh
-git push --atomic origin HEAD:refs/heads/main refs/tags/v0.2.0
+git push origin refs/tags/v0.2.0
 ```
 
 ## Verify and publish

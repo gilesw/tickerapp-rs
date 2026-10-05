@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-05
+
+- Add some cicd.
+- Automate releasing.
+- Ver bump script.
+
 ## 0.1.0 — 2026-10-03
 
 - Generate all 14 operations from the pinned Ticker Data API 2.2.1 specification.

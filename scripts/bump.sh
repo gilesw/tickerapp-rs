@@ -139,5 +139,4 @@ path.write_text(head.rstrip("\n") + "\n\n" + section + "\n\n## " + rest)
 PY
 
 git status --short
-printf '%s\n' "Prepared $next. Next: edit the CHANGELOG.md bullets, run 'mise run check'," \
-    "commit with 'git commit -am \"Release $next\"', then 'mise run tag'."
+printf '%s\n' "Prepared $next. Next: 'mise run check', 'git commit -am \"Release $next\"', 'mise run tag'."

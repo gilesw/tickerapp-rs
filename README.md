@@ -151,7 +151,7 @@ records exactly what is generated. Tests use synthetic responses and local mock
 servers; no credentials or account data are stored in fixtures.
 
 Verification on 2026-10-05: 16 client tests, one documentation example and
-44 release-script tests pass. A live Rust request on 2026-10-03 fetched and
+47 release-script tests pass. A live Rust request on 2026-10-03 fetched and
 decoded one RNS disclosure, including `latestCursor` metadata. Other endpoints
 have not been live-verified. Formatting, Clippy and generated-output checks also pass.
 

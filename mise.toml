@@ -66,7 +66,7 @@ dir = "{{config_root}}"
 run = "bash scripts/bump.sh"
 
 [tasks.tag]
-description = "Create the annotated tag for the Cargo.toml version; --push also pushes it"
+description = "Create and push the annotated tag for the Cargo.toml version; --no-push only creates it"
 dir = "{{config_root}}"
 run = "bash scripts/tag.sh"
 

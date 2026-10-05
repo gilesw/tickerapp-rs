@@ -69,6 +69,13 @@ class TagTests(unittest.TestCase):
         (self.repo / "Cargo.toml").write_text(CARGO_TOML.format(version="0.1.1"))
         (self.repo / "CHANGELOG.md").write_text(CHANGELOG)
         self.run_git("commit", "-q", "-am", "Release 0.1.1")
+        self.run_git("push", "-q", "origin", "HEAD")
+        self.run_git("remote", "set-head", "origin", "main")
+
+    def commit_changelog(self, text, message):
+        (self.repo / "CHANGELOG.md").write_text(text)
+        self.run_git("commit", "-q", "-am", message)
+        self.run_git("push", "-q", "origin", "HEAD")
 
     def run_git(self, *args):
         return subprocess.run(
@@ -101,23 +108,19 @@ class TagTests(unittest.TestCase):
         self.assertIn(f"Release {version}", self.run_git("tag", "-l", "--format=%(contents)", tag))
         self.assertEqual(self.run_git("rev-parse", f"{tag}^{{commit}}"), self.run_git("rev-parse", "HEAD"))
 
-    def test_creates_annotated_tag_without_pushing(self):
+    def test_no_push_creates_annotated_tag_only(self):
+        result = self.tag("--no-push")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_annotated("v0.1.1", "0.1.1")
+        self.assertIn("git push origin refs/tags/v0.1.1", result.stdout)
+        self.assertNotIn("refs/tags/v0.1.1", self.remote_refs())
+
+    def test_default_pushes_tag(self):
         result = self.tag()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assert_annotated("v0.1.1", "0.1.1")
-        self.assertIn("git push --atomic origin HEAD:refs/heads/main refs/tags/v0.1.1", result.stdout)
-        refs = self.remote_refs()
-        self.assertNotIn("refs/tags/v0.1.1", refs)
-        self.assertEqual(refs["refs/heads/main"], self.run_git("rev-parse", "v0.1.0^{commit}"))
-
-    def test_push_sends_branch_and_tag(self):
-        result = self.tag("--push")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assert_annotated("v0.1.1", "0.1.1")
-        refs = self.remote_refs()
-        self.assertEqual(refs["refs/heads/main"], self.run_git("rev-parse", "HEAD"))
-        self.assertEqual(refs["refs/tags/v0.1.1"], self.run_git("rev-parse", "v0.1.1"))
-        self.assertIn("Pushed main and v0.1.1", result.stdout)
+        self.assertEqual(self.remote_refs()["refs/tags/v0.1.1"], self.run_git("rev-parse", "v0.1.1"))
+        self.assertIn("Pushed v0.1.1", result.stdout)
 
     def test_unknown_argument_blocks(self):
         self.assert_blocked("Unknown argument: --force", "--force")
@@ -125,6 +128,31 @@ class TagTests(unittest.TestCase):
     def test_dirty_tree_blocks(self):
         (self.repo / "notes.txt").write_text("wip\n")
         self.assert_blocked("Working tree must be clean")
+
+    def test_feature_branch_blocks(self):
+        self.run_git("checkout", "-q", "-b", "feat/thing")
+        self.assert_blocked("On feat/thing; releases are tagged on main")
+
+    def test_detached_head_blocks(self):
+        self.run_git("checkout", "-q", "--detach")
+        self.assert_blocked("Detached HEAD; check out main")
+
+    def test_missing_origin_head_blocks(self):
+        self.run_git("remote", "set-head", "origin", "--delete")
+        self.assert_blocked("origin has no default branch recorded")
+
+    def test_unpushed_release_commit_blocks(self):
+        (self.repo / "src.txt").write_text("more\n")
+        self.run_git("add", "-A")
+        self.run_git("commit", "-q", "-m", "Unpushed")
+        self.assert_blocked("HEAD is not the tip of origin/main")
+
+    def test_divergent_origin_main_blocks(self):
+        self.run_git("push", "-q", "--force", "origin", "v0.1.0^{commit}:refs/heads/main")
+        result = self.tag()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("HEAD is not the tip of origin/main", result.stderr)
+        self.assertEqual(self.local_tags(), ["v0.1.0"])
 
     def test_existing_local_tag_blocks(self):
         self.run_git("tag", "v0.1.1", "v0.1.0")
@@ -150,51 +178,29 @@ class TagTests(unittest.TestCase):
         self.assertEqual(self.local_tags(), ["v0.1.0"])
 
     def test_missing_changelog_section_blocks(self):
-        (self.repo / "CHANGELOG.md").write_text("# Changelog\n\n## 0.1.0 — 2026-01-01\n\n- Initial release.\n")
-        self.run_git("commit", "-q", "-am", "Forget the changelog")
+        self.commit_changelog("# Changelog\n\n## 0.1.0 — 2026-01-01\n\n- Initial release.\n", "Forget the changelog")
         self.assert_blocked("must be '## 0.1.1 — YYYY-MM-DD', found '## 0.1.0 — 2026-01-01'")
 
     def test_unreleased_changelog_section_blocks(self):
-        (self.repo / "CHANGELOG.md").write_text(CHANGELOG.replace("0.1.1 — 2026-01-02", "0.1.1 — Unreleased"))
-        self.run_git("commit", "-q", "-am", "Undated changelog")
+        self.commit_changelog(CHANGELOG.replace("0.1.1 — 2026-01-02", "0.1.1 — Unreleased"), "Undated changelog")
         self.assert_blocked("found '## 0.1.1 — Unreleased'")
 
     def test_buried_changelog_section_blocks(self):
-        (self.repo / "CHANGELOG.md").write_text(
-            "# Changelog\n\n## 0.2.0 — 2026-01-03\n\n- Later.\n\n## 0.1.1 — 2026-01-02\n\n- Add thing.\n"
+        self.commit_changelog(
+            "# Changelog\n\n## 0.2.0 — 2026-01-03\n\n- Later.\n\n## 0.1.1 — 2026-01-02\n\n- Add thing.\n",
+            "Newer section on top",
         )
-        self.run_git("commit", "-q", "-am", "Newer section on top")
         self.assert_blocked("found '## 0.2.0 — 2026-01-03'")
 
-    def test_detached_head_with_push_blocks(self):
-        self.run_git("checkout", "-q", "--detach")
-        self.assert_blocked("Detached HEAD", "--push")
-
-    def test_detached_head_without_push_tags_with_placeholder(self):
-        self.run_git("checkout", "-q", "--detach")
-        result = self.tag()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assert_annotated("v0.1.1", "0.1.1")
-        self.assertIn("HEAD:refs/heads/<branch> refs/tags/v0.1.1", result.stdout)
-
     def test_rejected_push_keeps_local_tag_only(self):
-        other = self.repo.parent / "other"
-        subprocess.run(["git", "clone", "-q", str(self.remote), str(other)], check=True, capture_output=True)
-        for key, value in (("user.name", "Other"), ("user.email", "other@example.com"), ("commit.gpgsign", "false")):
-            subprocess.run(["git", "-C", str(other), "config", key, value], check=True)
-        (other / "diverge.txt").write_text("x\n")
-        subprocess.run(["git", "-C", str(other), "add", "-A"], check=True)
-        subprocess.run(["git", "-C", str(other), "commit", "-q", "-m", "Diverge"], check=True)
-        subprocess.run(["git", "-C", str(other), "push", "-q", "origin", "HEAD:main"], check=True, capture_output=True)
-        divergent = self.remote_refs()["refs/heads/main"]
-
-        result = self.tag("--push")
+        hook = self.remote / "hooks" / "pre-receive"
+        hook.write_text("#!/bin/sh\nexit 1\n")
+        hook.chmod(0o755)
+        result = self.tag()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Push rejected; v0.1.1 remains local", result.stderr)
         self.assertEqual(self.local_tags(), ["v0.1.0", "v0.1.1"])
-        refs = self.remote_refs()
-        self.assertEqual(refs["refs/heads/main"], divergent)
-        self.assertNotIn("refs/tags/v0.1.1", refs)
+        self.assertNotIn("refs/tags/v0.1.1", self.remote_refs())
 
 
 if __name__ == "__main__":
