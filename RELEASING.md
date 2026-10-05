@@ -7,8 +7,8 @@ for example `v0.1.0`. The publishing script reads the tag and requires it to
 match the manifest; it never rewrites a version or makes a commit.
 
 The same commit must be tested, pushed to the public repository and published
-to crates.io. A Git tag and a crates.io release are separate actions: pushing
-a tag alone does not publish the crate.
+to crates.io. Pushing a `v*` tag runs `.github/workflows/release.yml`, which
+lints, tests and then publishes that commit with `mise run release:publish`.
 
 This follows Cargo's recommendation to version the manifest, keep a changelog
 and tag the published commit. [Cargo publishing guide](https://doc.rust-lang.org/cargo/reference/publishing.html).
@@ -17,10 +17,16 @@ and tag the published commit. [Cargo publishing guide](https://doc.rust-lang.org
 
 - Keep Git remote `origin` and `package.repository` in `Cargo.toml` pointing
   to the public repository.
-- Confirm the crate name is available. For authentication, export
-  `CARGO_REGISTRY_TOKEN` in the invoking environment; Cargo reads it directly.
-  No login step is needed when using this token. Alternatively, use
-  `mise run release:login` or another Cargo credential provider.
+- Confirm the crate name is available. For authentication, Cargo reads
+  `CARGO_REGISTRY_TOKEN` from the environment directly; no login step is needed.
+  GitHub Actions obtains a short-lived token through crates.io
+  [Trusted Publishing](https://crates.io/docs/trusted-publishing), so no
+  long-lived secret is stored. Register the publisher once under the crate's
+  Settings on crates.io with repository owner `gilesw`, repository name
+  `tickerapp-rs`, workflow filename `release.yml` and environment `crates-io`.
+  Trusted Publishing cannot create a crate, so publish the first version
+  locally. For a local publish, export `CARGO_REGISTRY_TOKEN` in the invoking
+  shell, or use `mise run release:login` or another Cargo credential provider.
 - The manifest permits crates.io using `publish = ["crates-io"]`. An error
   saying the manifest does not permit publication is a manifest configuration
   problem, not a login failure. The script respects this restriction in dry runs too.
@@ -52,7 +58,16 @@ Use an explicit branch destination if publishing from a detached checkout.
 
 ## Verify and publish
 
-From the project root (or a subdirectory):
+Pushing the tag is the release. The `release` workflow runs lint and test,
+then `mise run release:publish` in a job bound to the `crates-io` environment.
+`rust-lang/crates-io-auth-action` exchanges the job's OIDC identity for a
+crates.io token that expires after 30 minutes and is revoked when the job
+ends, and crates.io only accepts it from that repository, workflow file and
+environment. The environment can also require a reviewer before the upload.
+The job fails if the version is already on crates.io, which also makes an
+accidental second tag push harmless.
+
+To check or publish locally instead, from the project root (or a subdirectory):
 
 ```sh
 mise run release          # validate and dry-run; detect the tag at HEAD
@@ -74,11 +89,6 @@ mise run release:publish v0.1.0
 The underlying `scripts/publish.sh [vVERSION] [--publish]` remains available.
 Task working directories and argument forwarding follow
 [mise's task conventions](https://mise.jdx.dev/tasks/toml-tasks.html).
-
-Pushing the tag also runs the lint and test workflows followed by the same
-dry run in GitHub Actions (`.github/workflows/release.yml`). That run has no
-registry token and never uploads; it only confirms the tagged commit passes
-every gate before `release:publish` is run locally.
 
 The default command performs a dry run. The script requires a clean checkout,
 checks that the tag points to HEAD, checks the tag against the manifest version,
@@ -107,7 +117,8 @@ Confirm the expected version appears on crates.io. Keep its Git tag unchanged.
 Registry versions cannot be overwritten; corrections require a new version.
 If Cargo reports an upload/index timeout, check crates.io before retrying:
 the upload may already have succeeded. If the upload did not happen and the
-tagged code is unchanged, rerun the script against the same tag.
+tagged code is unchanged, re-run the failed workflow job, or run the script
+locally against the same tag.
 
 If code must change after the tag was pushed, prepare a new version/tag.
 Use yanking for an unsuitable published version when appropriate; it is not
