@@ -139,7 +139,8 @@
             "description": "Category type",
             "enum": [
               "Ticker",
-              "FCA"
+              "FCA",
+              "RNS"
             ],
             "type": "string"
           },
@@ -851,7 +852,8 @@
               "high": {
                 "properties": {
                   "date": {
-                    "format": "date",
+                    "description": "52-week high date; the live API sends a full timestamp.",
+                    "format": "date-time",
                     "type": "string"
                   },
                   "price": {
@@ -863,7 +865,8 @@
               "low": {
                 "properties": {
                   "date": {
-                    "format": "date",
+                    "description": "52-week low date; the live API sends a full timestamp.",
+                    "format": "date-time",
                     "type": "string"
                   },
                   "price": {
@@ -889,7 +892,8 @@
               "volume": {
                 "properties": {
                   "average": {
-                    "type": "integer"
+                    "description": "52-week average daily volume; the live API sends a fraction.",
+                    "type": "number"
                   },
                   "total": {
                     "type": "integer"

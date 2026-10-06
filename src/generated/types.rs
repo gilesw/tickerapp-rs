@@ -572,8 +572,9 @@ pub struct PriceSnapshotYear {
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PriceSnapshotYearVolume {
+    ///52-week average daily volume; the live API sends a fraction.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub average: Option<i64>,
+    pub average: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total: Option<i64>,
 }
@@ -586,15 +587,17 @@ pub struct PriceSnapshotYearPerformance {
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PriceSnapshotYearLow {
+    ///52-week low date; the live API sends a full timestamp.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub date: Option<chrono::NaiveDate>,
+    pub date: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price: Option<f64>,
 }
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct PriceSnapshotYearHigh {
+    ///52-week high date; the live API sends a full timestamp.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub date: Option<chrono::NaiveDate>,
+    pub date: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price: Option<f64>,
 }
@@ -971,6 +974,7 @@ pub struct Category {
 pub enum CategoryKind {
     Ticker,
     Fca,
+    Rns,
     /// Custom or unknown model identifier
     Custom(String),
 }
@@ -983,6 +987,7 @@ impl<'de> serde::Deserialize<'de> for CategoryKind {
         match value.as_str() {
             "Ticker" => Ok(CategoryKind::Ticker),
             "FCA" => Ok(CategoryKind::Fca),
+            "RNS" => Ok(CategoryKind::Rns),
             _ => Ok(CategoryKind::Custom(value)),
         }
     }
@@ -1000,6 +1005,7 @@ impl CategoryKind {
         match self {
             CategoryKind::Ticker => "Ticker",
             CategoryKind::Fca => "FCA",
+            CategoryKind::Rns => "RNS",
             CategoryKind::Custom(s) => s.as_str(),
         }
     }
