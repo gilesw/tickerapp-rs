@@ -25,3 +25,18 @@ actions:
     update:
       type: number
       description: 52-week average daily volume; the live API sends a fraction.
+  - target: "$.paths['/prices/{identifier}'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/nav'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/timeseries'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/trades'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/disclosures/sources/rns/items/{identifier}'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true

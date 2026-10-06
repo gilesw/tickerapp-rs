@@ -298,7 +298,7 @@ async fn individual_disclosure_and_exchange_decode() {
     let server = MockServer::start().await;
     respond(
         &server,
-        "/v2/disclosures/sources/rns/items/example-1",
+        "/v2/disclosures/sources/rns/items/urn:newsml:example.com:20250128:1234A:1",
         json!({"data":disclosure()}),
     )
     .await;
@@ -310,7 +310,7 @@ async fn individual_disclosure_and_exchange_decode() {
     .await;
     assert_eq!(
         client(&server)
-            .disclosure("example-1")
+            .disclosure("urn:newsml:example.com:20250128:1234A:1")
             .await
             .unwrap()
             .rns_id,
