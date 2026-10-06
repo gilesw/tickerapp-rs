@@ -1,7 +1,7 @@
 use serde_json::{Value, json};
 use tickerapp::{
-    Client, DisclosureQuery, Error, GetCurrentPriceChangeBasis, GetTimeseriesKey, PageQuery,
-    Paging, TimeseriesQuery, timeseries_items,
+    CategoryKind, Client, DisclosureQuery, Error, GetCurrentPriceChangeBasis, GetTimeseriesKey,
+    PageQuery, Paging, TimeseriesQuery, timeseries_items,
 };
 use wiremock::{
     Mock, MockServer, Request, ResponseTemplate,
@@ -35,9 +35,9 @@ fn no_cursor(request: &Request) -> bool {
 }
 
 #[tokio::test]
-async fn price_encodes_identifier_and_uses_header_auth() {
+async fn price_keeps_identifier_colon_and_uses_header_auth() {
     let server = MockServer::start().await;
-    Mock::given(path("/v2/prices/XLON%3ALLOY"))
+    Mock::given(path("/v2/prices/XLON:LLOY"))
         .and(header("x-api-key", "test-secret"))
         .and(query_param("changeBasis", "trade"))
         .respond_with(ResponseTemplate::new(200).set_body_json(
@@ -60,6 +60,32 @@ async fn price_encodes_identifier_and_uses_header_auth() {
             .as_str()
             .contains("test-secret")
     );
+}
+
+#[tokio::test]
+async fn snapshot_year_dates_are_timestamps() {
+    let server = MockServer::start().await;
+    respond(
+        &server,
+        "/v2/prices/GB0008706128",
+        json!({"data":{"year":{
+            "high":{"price":117.9,"date":"2026-08-04T00:00:00.000000Z"},
+            "low":{"price":81.82,"date":"2025-10-17T00:00:00.000000Z"},
+            "volume":{"total":38872653682_i64,"average":105609996.71541502}}}}),
+    )
+    .await;
+    let year = client(&server)
+        .price("GB0008706128")
+        .await
+        .unwrap()
+        .year
+        .unwrap();
+    assert_eq!(
+        year.high.unwrap().date.unwrap().to_rfc3339(),
+        "2026-08-04T00:00:00+00:00"
+    );
+    assert_eq!(year.low.unwrap().price, Some(81.82));
+    assert_eq!(year.volume.unwrap().average, Some(105609996.71541502));
 }
 
 #[tokio::test]
@@ -231,8 +257,10 @@ async fn invalid_paging_is_rejected_without_network_requests() {
 async fn disclosures_preserve_warnings_nullable_version_and_unknown_categories() {
     let server = MockServer::start().await;
     let mut item = disclosure();
-    item["category"] =
-        json!([{"kind":"NewKind","code":"NEW","name":"New category","importance":"NewImportance"}]);
+    item["category"] = json!([
+        {"kind":"NewKind","code":"NEW","name":"New category","importance":"NewImportance"},
+        {"kind":"RNS","code":"EOD","name":"Final Announcement Released","importance":"low"}
+    ]);
     Mock::given(path("/v2/disclosures/sources/rns/items"))
         .and(query_param("symbols", "LLOY,BARC")).and(query_param("fcaCategories", "FR,IR"))
         .and(query_param("hasSymbol", "true")).and(query_param("q", "results & dividends"))
@@ -251,6 +279,7 @@ async fn disclosures_preserve_warnings_nullable_version_and_unknown_categories()
     assert_eq!(page.warnings.unwrap()[0], "Filter unavailable on this plan");
     assert_eq!(page.data[0].version, None);
     assert_eq!(page.data[0].category[0].kind.as_str(), "NewKind");
+    assert!(matches!(page.data[0].category[1].kind, CategoryKind::Rns));
     assert_eq!(
         page.data[0].category[0]
             .importance
@@ -269,7 +298,7 @@ async fn individual_disclosure_and_exchange_decode() {
     let server = MockServer::start().await;
     respond(
         &server,
-        "/v2/disclosures/sources/rns/items/example-1",
+        "/v2/disclosures/sources/rns/items/urn:newsml:example.com:20250128:1234A:1",
         json!({"data":disclosure()}),
     )
     .await;
@@ -281,7 +310,7 @@ async fn individual_disclosure_and_exchange_decode() {
     .await;
     assert_eq!(
         client(&server)
-            .disclosure("example-1")
+            .disclosure("urn:newsml:example.com:20250128:1234A:1")
             .await
             .unwrap()
             .rns_id,

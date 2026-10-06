@@ -139,7 +139,8 @@
             "description": "Category type",
             "enum": [
               "Ticker",
-              "FCA"
+              "FCA",
+              "RNS"
             ],
             "type": "string"
           },
@@ -851,7 +852,8 @@
               "high": {
                 "properties": {
                   "date": {
-                    "format": "date",
+                    "description": "52-week high date; the live API sends a full timestamp.",
+                    "format": "date-time",
                     "type": "string"
                   },
                   "price": {
@@ -863,7 +865,8 @@
               "low": {
                 "properties": {
                   "date": {
-                    "format": "date",
+                    "description": "52-week low date; the live API sends a full timestamp.",
+                    "format": "date-time",
                     "type": "string"
                   },
                   "price": {
@@ -889,7 +892,8 @@
               "volume": {
                 "properties": {
                   "average": {
-                    "type": "integer"
+                    "description": "52-week average daily volume; the live API sends a fraction.",
+                    "type": "number"
                   },
                   "total": {
                     "type": "integer"
@@ -1394,6 +1398,7 @@
         "operationId": "getRnsDisclosureItem",
         "parameters": [
           {
+            "allowReserved": true,
             "description": "The disclosure item identifier. Accepts two formats: - **GUID**: The globally unique identifier (e.g., `urn:newsml:londonstockexchange.com:20251231:1234A:1`) - **rnsDateId**: A 16-character composite key in format `yyyy-mm-dd.rnsId` (e.g., `2025-12-31.1234A`)\nThe format is auto-detected by length: exactly 16 characters = rnsDateId, otherwise GUID.\n",
             "examples": {
               "guid": {
@@ -1912,6 +1917,7 @@
         "operationId": "getCurrentPrice",
         "parameters": [
           {
+            "allowReserved": true,
             "description": "The instrument identifier. Accepts two formats: - **ISIN**: 12 alphanumeric characters (e.g., `GB00B0SWJX34`) - **MIC:Symbol**: Exchange code and symbol separated by colon (e.g., `XLON:MCB`)\n",
             "examples": {
               "isin": {
@@ -2024,6 +2030,7 @@
         "operationId": "getNav",
         "parameters": [
           {
+            "allowReserved": true,
             "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
             "in": "path",
             "name": "identifier",
@@ -2183,6 +2190,7 @@
         "operationId": "getTimeseries",
         "parameters": [
           {
+            "allowReserved": true,
             "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
             "in": "path",
             "name": "identifier",
@@ -2360,6 +2368,7 @@
         "operationId": "getTrades",
         "parameters": [
           {
+            "allowReserved": true,
             "description": "The instrument identifier. Accepts ISIN (12 chars) or MIC:Symbol format.\n",
             "in": "path",
             "name": "identifier",

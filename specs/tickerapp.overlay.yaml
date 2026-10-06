@@ -11,3 +11,32 @@ actions:
         type: string
         nullable: true
         description: Additional opaque cursor observed in live disclosure pagination on 2026-10-03.
+  - target: "$.components.schemas.PriceSnapshot.properties.year.properties.high.properties.date"
+    update:
+      format: date-time
+      description: 52-week high date; the live API sends a full timestamp.
+  - target: "$.components.schemas.PriceSnapshot.properties.year.properties.low.properties.date"
+    update:
+      format: date-time
+      description: 52-week low date; the live API sends a full timestamp.
+  - target: "$.components.schemas.Category.properties.kind.enum"
+    update: RNS
+  - target: "$.components.schemas.PriceSnapshot.properties.year.properties.volume.properties.average"
+    update:
+      type: number
+      description: 52-week average daily volume; the live API sends a fraction.
+  - target: "$.paths['/prices/{identifier}'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/nav'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/timeseries'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/prices/{identifier}/trades'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true
+  - target: "$.paths['/disclosures/sources/rns/items/{identifier}'].get.parameters[?@.name == 'identifier']"
+    update:
+      allowReserved: true

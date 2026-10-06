@@ -2,7 +2,7 @@
 
 Unofficial async Rust client for the Ticker.app v2 market data API.
 Generated from the checked-in OpenAPI 3.0.1 specification, API version **2.2.1**,
-with a small convenience layer. Requires Rust 1.85 or newer.
+with a small convenience layer. Requires Rust 1.98.1 or newer.
 
 This crate is being prepared for publication. For now, use a local dependency:
 
@@ -144,20 +144,25 @@ mise run generate:check
 mise run check
 ```
 
-Generation pins `openapi-to-rust` 0.19.0 and installs it locally under `target/tools`.
+Generation pins `openapi-to-rust` 0.22.0, the first release that honours `allowReserved` on
+path parameters, so `XLON:LLOY` keeps its colon, and installs it locally under `target/tools`.
 Edit the specification/configuration/overlay, then regenerate; never hand-edit
 `src/generated`. [Specification provenance and compatibility changes](specs/README.md)
 records exactly what is generated. Tests use synthetic responses and local mock
 servers; no credentials or account data are stored in fixtures.
 
-Verification on 2026-10-03: 16 client tests, one documentation example and
-12 release-script tests pass. A live Rust request fetched and decoded one RNS
-disclosure, including `latestCursor` metadata. Other endpoints have not been
-live-verified. Formatting, Clippy and generated-output checks also pass.
+Verification on 2026-10-06: 17 client tests, one documentation example and
+47 release-script tests pass. Live requests on 2026-10-06 decoded a price
+snapshot by `XLON:LLOY`, a timeseries page and an RNS item looked up by GUID;
+RNS disclosure pages were checked on 2026-10-05. Exchanges were listed live;
+NAV, trades and market statistics have not been live-verified. Formatting,
+Clippy and generated-output checks also pass.
 
-The [release guide](RELEASING.md) covers a clean tagged commit, tag detection,
-`mise run release` for a dry run and `mise run release:publish` for upload.
-Cargo reads an inherited `CARGO_REGISTRY_TOKEN` directly.
+The [release guide](RELEASING.md) covers `mise run bump` for the version and
+changelog, `mise run tag` for the annotated tag and push, `mise run release` for
+a dry run and `mise run release:publish` for upload. Pushing the tag publishes
+through crates.io trusted publishing; local uploads read an inherited
+`CARGO_REGISTRY_TOKEN`.
 
 ## License and provenance
 
