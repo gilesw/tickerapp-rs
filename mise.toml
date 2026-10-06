@@ -7,7 +7,7 @@ shellcheck = "0.10.0"
 
 [tasks."sdk:tool"]
 description = "Install the pinned generator into target/tools"
-run = "cargo install --locked --quiet --root target/tools openapi-to-rust@0.19.0"
+run = "cargo install --locked --quiet --root target/tools openapi-to-rust@0.22.0"
 
 [tasks.generate]
 description = "Regenerate the client from the checked-in Ticker.app specification"

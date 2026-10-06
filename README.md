@@ -144,7 +144,8 @@ mise run generate:check
 mise run check
 ```
 
-Generation pins `openapi-to-rust` 0.19.0 and installs it locally under `target/tools`.
+Generation pins `openapi-to-rust` 0.22.0, the first release that honours `allowReserved` on
+path parameters, so `XLON:LLOY` keeps its colon, and installs it locally under `target/tools`.
 Edit the specification/configuration/overlay, then regenerate; never hand-edit
 `src/generated`. [Specification provenance and compatibility changes](specs/README.md)
 records exactly what is generated. Tests use synthetic responses and local mock
