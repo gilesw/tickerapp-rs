@@ -1,10 +1,15 @@
 # Changelog
 
-## 0.2.0 — 2026-10-05
+## 0.2.0 — 2026-10-06
 
-- Add some cicd.
-- Automate releasing.
-- Ver bump script.
+- Keep `:` in instrument and RNS identifiers in request paths. Ticker.app
+  answers `/prices/XLON%3ALLOY` with 404; the identifier parameters are marked
+  `allowReserved` and generated with `openapi-to-rust` 0.22.0.
+- Decode the live price snapshot: 52-week high and low dates are timestamps
+  (`DateTime<Utc>`, was `NaiveDate`) and the 52-week average volume is an
+  `f64` (was `i64`).
+- Add the `RNS` category kind.
+- Add GitHub Actions workflows and tag-based releasing with `bump` and `tag` tasks.
 
 ## 0.1.0 — 2026-10-03
 

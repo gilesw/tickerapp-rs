@@ -151,10 +151,12 @@ Edit the specification/configuration/overlay, then regenerate; never hand-edit
 records exactly what is generated. Tests use synthetic responses and local mock
 servers; no credentials or account data are stored in fixtures.
 
-Verification on 2026-10-05: 16 client tests, one documentation example and
-47 release-script tests pass. A live Rust request on 2026-10-03 fetched and
-decoded one RNS disclosure, including `latestCursor` metadata. Other endpoints
-have not been live-verified. Formatting, Clippy and generated-output checks also pass.
+Verification on 2026-10-06: 17 client tests, one documentation example and
+47 release-script tests pass. Live requests on 2026-10-06 decoded a price
+snapshot by `XLON:LLOY`, a timeseries page and an RNS item looked up by GUID;
+RNS disclosure pages were checked on 2026-10-05. Exchanges were listed live;
+NAV, trades and market statistics have not been live-verified. Formatting,
+Clippy and generated-output checks also pass.
 
 The [release guide](RELEASING.md) covers `mise run bump` for the version and
 changelog, `mise run tag` for the annotated tag and push, `mise run release` for
