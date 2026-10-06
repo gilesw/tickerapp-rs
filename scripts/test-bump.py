@@ -115,7 +115,7 @@ class BumpTests(unittest.TestCase):
         self.run_git("config", "commit.gpgsign", "false")
         self.run_git("config", "tag.gpgsign", "false")
         self.run_git("config", "core.hooksPath", "/dev/null")
-        subprocess.run(["git", "init", "-q", "--bare", str(self.remote)], check=True)
+        subprocess.run(["git", "init", "-q", "--bare", "--initial-branch=main", str(self.remote)], check=True)
         self.run_git("remote", "add", "origin", str(self.remote))
 
         (self.repo / "scripts").mkdir()
