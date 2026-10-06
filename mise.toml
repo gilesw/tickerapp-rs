@@ -7,8 +7,7 @@ shellcheck = "0.10.0"
 
 [tasks."sdk:tool"]
 description = "Install the pinned generator into target/tools"
-# allowReserved on path parameters needs gpu-cli/openapi-to-rust#101; pin to crates.io once released.
-run = "cargo install --locked --quiet --root target/tools --git https://github.com/gilesw/openapi-to-rust-fork --rev 9d480414e4a797d5c568bc3c21dc1a3ca4826564 openapi-to-rust"
+run = "cargo install --locked --quiet --root target/tools openapi-to-rust@0.22.0"
 
 [tasks.generate]
 description = "Regenerate the client from the checked-in Ticker.app specification"
