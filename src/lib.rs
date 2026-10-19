@@ -20,7 +20,9 @@ mod error;
 #[rustfmt::skip]
 pub mod generated;
 
-pub use client::{BASE_URL, Client, DisclosureQuery, PageQuery, TimeseriesQuery, timeseries_items};
+pub use client::{
+    BASE_URL, Client, DisclosureQuery, PageQuery, TimeseriesQuery, collect_pages, timeseries_items,
+};
 pub use error::Error;
 pub use generated::client::{
     GetCurrentPriceChangeBasis, GetTimeseriesKey, ListRnsDisclosureItemsChannel,
