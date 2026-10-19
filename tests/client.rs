@@ -439,3 +439,81 @@ async fn raw_client_exposes_nav_and_market_statistics() {
 fn debug_omits_credentials() {
     assert!(!format!("{:?}", Client::new("test-secret")).contains("test-secret"));
 }
+
+/// A caller's own error type, as an app wrapping each request in its own retries would use.
+#[derive(Debug, PartialEq)]
+enum AppError {
+    Sdk(String),
+}
+
+impl From<Error> for AppError {
+    fn from(error: Error) -> Self {
+        Self::Sdk(error.to_string())
+    }
+}
+
+fn cursor(next: Option<&str>) -> Paging {
+    serde_json::from_value(json!({"pageSize": 1, "nextCursor": next})).unwrap()
+}
+
+#[tokio::test]
+async fn collect_pages_sends_each_page_through_the_callers_fetch() {
+    let mut requested = Vec::new();
+    let rows = tickerapp::collect_pages(PageQuery::default(), 5, |page| {
+        requested.push(page.page_cursor.clone());
+        async move {
+            let (row, next) = match page.page_cursor.as_deref() {
+                None => (1, Some("b")),
+                Some("b") => (2, Some("c")),
+                _ => (3, None),
+            };
+            Ok::<_, AppError>((vec![row], cursor(next)))
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(rows, vec![1, 2, 3]);
+    assert_eq!(requested, vec![None, Some("b".into()), Some("c".into())]);
+
+    let repeated: Result<Vec<i32>, AppError> =
+        tickerapp::collect_pages(PageQuery::default(), 5, |_| async {
+            Ok((vec![1], cursor(Some("same"))))
+        })
+        .await;
+    assert_eq!(
+        repeated,
+        Err(AppError::Sdk(
+            "incomplete pagination: Repeated or empty cursor".into()
+        ))
+    );
+
+    let failed: Result<Vec<i32>, AppError> =
+        tickerapp::collect_pages(PageQuery::default(), 5, |_| async {
+            Err(AppError::Sdk("down".into()))
+        })
+        .await;
+    assert_eq!(failed, Err(AppError::Sdk("down".into())));
+}
+
+#[test]
+fn api_error_reads_the_documented_error_body() {
+    let error = Error::Api {
+        status: 400,
+        body: r#"{"error":{"message":"Pagination conflict","hint":"Use one of pageCursor or pageNumber"}}"#.into(),
+        retry_after: None,
+    };
+    let detail = error.api_error().unwrap();
+    assert_eq!(detail.message, "Pagination conflict");
+    assert_eq!(
+        detail.hint.as_deref(),
+        Some("Use one of pageCursor or pageNumber")
+    );
+
+    let plain = Error::Api {
+        status: 502,
+        body: "Bad gateway".into(),
+        retry_after: None,
+    };
+    assert!(plain.api_error().is_none());
+    assert!(Error::Decode("bad".into()).api_error().is_none());
+}

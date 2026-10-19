@@ -141,36 +141,17 @@ impl Client {
         query: &TimeseriesQuery,
         max_pages: usize,
     ) -> Result<Vec<TimeseriesItem>, Error> {
-        if max_pages == 0 || query.page.page_number.is_some() {
-            return Err(Error::InvalidRequest(
-                "Use cursor pagination and a positive maximum page count",
-            ));
-        }
-        let mut query = query.clone();
-        let mut seen = HashSet::new();
-        if let Some(cursor) = &query.page.page_cursor {
-            seen.insert(cursor.clone());
-        }
-        let mut rows = Vec::new();
-        for _ in 0..max_pages {
-            let response = self.timeseries(identifier, &query).await?;
-            rows.extend(timeseries_items(response.data)?);
-            match response.meta.paging {
-                Paging::CursorPaging(page) => match page.next_cursor {
-                    None => return Ok(rows),
-                    Some(cursor) if !cursor.is_empty() && seen.insert(cursor.clone()) => {
-                        query.page.page_cursor = Some(cursor);
-                    }
-                    Some(_) => return Err(Error::Pagination("Repeated or empty cursor")),
-                },
-                Paging::ClassicPaging(_) => {
-                    return Err(Error::Pagination("Expected cursor pagination"));
-                }
+        collect_pages(query.page.clone(), max_pages, |page| {
+            let query = TimeseriesQuery {
+                page,
+                ..query.clone()
+            };
+            async move {
+                let response = self.timeseries(identifier, &query).await?;
+                Ok((timeseries_items(response.data)?, response.meta.paging))
             }
-        }
-        Err(Error::Pagination(
-            "Page limit reached while more history remains",
-        ))
+        })
+        .await
     }
 
     /// One page of disclosures, including warnings and pagination metadata.
@@ -226,6 +207,56 @@ impl Client {
 
 fn joined(values: &[String]) -> Option<String> {
     (!values.is_empty()).then(|| values.join(","))
+}
+
+/// Collect rows across cursor pages, starting from `page`. `fetch` requests one page
+/// and returns its rows and paging, so callers can send each request through their own
+/// retries, pacing or logging; [`Client::all_timeseries`] uses it with
+/// [`Client::timeseries`].
+///
+/// Returns [`Error::InvalidRequest`] for a numbered page or a zero limit, and
+/// [`Error::Pagination`] when a cursor repeats or is empty, the provider switches to
+/// numbered pages, or more pages remain after `max_pages`. No partial result is
+/// returned as if it were complete. Row order is kept.
+pub async fn collect_pages<T, E, F, Fut>(
+    page: PageQuery,
+    max_pages: usize,
+    mut fetch: F,
+) -> Result<Vec<T>, E>
+where
+    F: FnMut(PageQuery) -> Fut,
+    Fut: Future<Output = Result<(Vec<T>, Paging), E>>,
+    E: From<Error>,
+{
+    if max_pages == 0 || page.page_number.is_some() {
+        return Err(Error::InvalidRequest(
+            "Use cursor pagination and a positive maximum page count",
+        )
+        .into());
+    }
+    let mut page = page;
+    let mut seen = HashSet::new();
+    if let Some(cursor) = &page.page_cursor {
+        seen.insert(cursor.clone());
+    }
+    let mut rows = Vec::new();
+    for _ in 0..max_pages {
+        let (items, paging) = fetch(page.clone()).await?;
+        rows.extend(items);
+        match paging {
+            Paging::CursorPaging(paging) => match paging.next_cursor {
+                None => return Ok(rows),
+                Some(cursor) if !cursor.is_empty() && seen.insert(cursor.clone()) => {
+                    page.page_cursor = Some(cursor);
+                }
+                Some(_) => return Err(Error::Pagination("Repeated or empty cursor").into()),
+            },
+            Paging::ClassicPaging(_) => {
+                return Err(Error::Pagination("Expected cursor pagination").into());
+            }
+        }
+    }
+    Err(Error::Pagination("Page limit reached while more pages remain").into())
 }
 
 /// Convert array, ISO-date-keyed or Unix-seconds-keyed history into rows.

@@ -99,6 +99,30 @@ continuation cursor, or switches to classic paging. It never reports truncated
 history as complete. Use the page method when incremental processing or resuming
 from a saved cursor matters. Starting with a cursor collects only from that point.
 
+`collect_pages` applies the same rules to any cursor-paged endpoint, with a
+closure that fetches one page. Applications that add their own retries, pacing
+or request logging can send each page through them, and use their own error type
+if it converts from `tickerapp::Error`:
+
+```rust,no_run
+use tickerapp::{Client, DisclosureQuery, collect_pages};
+
+# async fn example() -> Result<(), tickerapp::Error> {
+let client = Client::new("your-api-key");
+let query = DisclosureQuery { date_from: Some("2025-01-28".into()), ..Default::default() };
+let items = collect_pages(query.page.clone(), 50, |page| {
+    let query = DisclosureQuery { page, ..query.clone() };
+    let client = &client;
+    async move {
+        let response = client.disclosures(&query).await?;
+        Ok::<_, tickerapp::Error>((response.data, response.meta.paging))
+    }
+})
+.await?;
+# Ok(())
+# }
+```
+
 `timeseries_items` normalizes arrays and ISO-date/Unix-seconds-keyed responses.
 Invalid date keys are errors, not discarded rows. Array order is preserved;
 keyed responses use key order. There is no sorting, deduplication, price adjustment
@@ -125,6 +149,8 @@ Convenience methods return `tickerapp::Error`:
 - `Pagination`: bounded history collection could not finish.
 
 `is_unauthorized()` recognizes HTTP 401/403; `is_rate_limited()` recognizes 429.
+`api_error()` decodes an `Api` body that follows the documented `ErrorResponse`
+schema into its `message` and `hint`.
 Raw operations return generated endpoint-specific errors, convertible into `Error`.
 There are no automatic retries, caching, quota accounting or background tasks.
 

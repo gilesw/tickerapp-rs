@@ -37,6 +37,17 @@ impl Error {
     pub fn is_rate_limited(&self) -> bool {
         matches!(self, Self::Api { status: 429, .. })
     }
+
+    /// The provider's error message and hint from an [`Error::Api`] body that follows
+    /// the documented `ErrorResponse` schema.
+    pub fn api_error(&self) -> Option<crate::ErrorDetail> {
+        let Self::Api { body, .. } = self else {
+            return None;
+        };
+        serde_json::from_str::<crate::ErrorResponse>(body)
+            .ok()
+            .map(|response| response.error)
+    }
 }
 
 impl<E: std::fmt::Debug> From<crate::generated::client::ApiOpError<E>> for Error {
