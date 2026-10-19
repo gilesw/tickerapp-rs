@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 — 2026-10-19
+
+- Add collect_pages and Error::api_error.
+
 ## 0.2.0 — 2026-10-06
 
 - Keep `:` in instrument and RNS identifiers in request paths. Ticker.app
